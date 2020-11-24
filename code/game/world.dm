@@ -2,6 +2,22 @@
 
 GLOBAL_VAR(restart_counter)
 
+var/AUXTOOLS_PATH = "E:/auxtools/target/i686-pc-windows-msvc/debug/"
+var/AUXTOOLS_EXT = ".dll"
+
+/proc/_process_callbacks(regex/rx)
+	CRASH()
+
+/proc/auxtools_stack_trace()
+	CRASH()
+
+/proc/dump_bytecode()
+	CRASH()
+
+/proc/enable_debugging()
+	CRASH()
+
+
 /**
   * World creation
   *
@@ -29,6 +45,7 @@ GLOBAL_VAR(restart_counter)
   *			All atoms in both compiled and uncompiled maps are initialized()
   */
 /world/New()
+/*
 	var/extools = world.GetConfig("env", "EXTOOLS_DLL") || (world.system_type == MS_WINDOWS ? "./byond-extools.dll" : "./libbyond-extools.so")
 	if (fexists(extools))
 		call(extools, "maptick_initialize")()
@@ -36,6 +53,10 @@ GLOBAL_VAR(restart_counter)
 #ifdef REFERENCE_TRACKING
 	enable_reference_tracking()
 #endif
+*/
+	var/lib = "[AUXTOOLS_PATH]debug_server[AUXTOOLS_EXT]"
+	world.log << call(lib, "auxtools_init")()
+	enable_debugging(2448)
 
 	log_world("World loaded at [time_stamp()]!")
 
