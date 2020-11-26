@@ -54,9 +54,10 @@ var/AUXTOOLS_EXT = ".dll"
 	enable_reference_tracking()
 #endif
 */
-	var/lib = "[AUXTOOLS_PATH]debug_server[AUXTOOLS_EXT]"
-	world.log << call(lib, "auxtools_init")()
-	enable_debugging(2448)
+	var/debug_server = world.GetConfig("env", "AUXTOOLS_DEBUG_DLL")
+	if (debug_server)
+		call(debug_server, "auxtools_init")()
+		enable_debugging()
 
 	log_world("World loaded at [time_stamp()]!")
 
@@ -295,6 +296,12 @@ var/AUXTOOLS_EXT = ".dll"
 	log_world("World rebooted at [time_stamp()]")
 	shutdown_logging() // Past this point, no logging procs can be used, at risk of data loss.
 	..()
+
+/world/Del()
+	var/debug_server = world.GetConfig("env", "AUXTOOLS_DEBUG_DLL")
+	if (debug_server)
+		call(debug_server, "auxtools_shutdown")()
+	. = ..()
 
 /world/proc/update_status()
 
