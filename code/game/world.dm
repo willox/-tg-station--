@@ -2,9 +2,6 @@
 
 GLOBAL_VAR(restart_counter)
 
-var/AUXTOOLS_PATH = "E:/auxtools/target/i686-pc-windows-msvc/debug/"
-var/AUXTOOLS_EXT = ".dll"
-
 /proc/_process_callbacks(regex/rx)
 	CRASH()
 
