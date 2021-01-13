@@ -2,6 +2,10 @@
 
 GLOBAL_VAR(restart_counter)
 
+// idk where to put this lol
+/proc/auxtools_stack_trace(msg)
+	CRASH(msg)
+
 /**
  * World creation
  *
