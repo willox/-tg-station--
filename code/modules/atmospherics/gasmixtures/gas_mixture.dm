@@ -40,6 +40,13 @@ GLOBAL_LIST_INIT(gaslist_cache, init_gaslist_cache())
 		L[gas] = initial(gas.specific_heat)
 	return L
 
+// TODO: This!
+/proc/meta_gas_visibility_list()
+	. = subtypesof(/datum/gas)
+	for(var/gas_path in .)
+		var/datum/gas/gas = gas_path
+		.[gas_path] = initial(gas.moles_visible)
+
 // Auxmos uses this
 // TODO: rename, move
 /proc/equalize_all_gases_in_list(list/L)
@@ -59,17 +66,19 @@ GLOBAL_LIST_INIT(gaslist_cache, init_gaslist_cache())
 	var/_extools_pointer_gasmixture
 
 // TODO: Move
-#define AUXMOS "E:\\auxmos\\target\\i686-pc-windows-msvc\\debug\\auxmos.dll"
 #define AUXTOOLS_CHECK \
-	if (!GLOB.auxmos_initialized && fexists(AUXMOS) && try_auxtools_atmos_init()) \
+	if (!GLOB.auxmos_initialized && try_auxtools_atmos_init()) \
 		GLOB.auxmos_initialized = TRUE;
 GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
 
 /proc/try_auxtools_atmos_init()
-	var/res = call(AUXMOS, "auxtools_init")()
+	var/res = call("E:\\auxmos\\target\\i686-pc-windows-msvc\\debug\\auxmos.dll", "auxtools_init")()
 	if (!findtext(res, "SUCCESS"))
 		world.log << "Fucked up [res]"
 		//del world
+		return FALSE
+	if (!auxtools_atmos_init())
+		world.log << "Fucked up init!"
 		return FALSE
 	return TRUE
 
@@ -80,8 +89,6 @@ GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
 	if (!isnull(volume))
 		initial_volume = volume
 	AUXTOOLS_CHECK
-	if(!GLOB.auxmos_initialized && auxtools_atmos_init())
-		GLOB.auxmos_initialized = TRUE
 	__gasmixture_register()
 	reaction_results = new
 
@@ -247,7 +254,14 @@ GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
 	return get_moles(gas_id) >= amount
 
 /datum/gas_mixture/proc/remove_specific(gas_id, amount)
-	CRASH("gas_mixture/remove_specific not implemented!")
+	amount = min(amount, get_moles(gas_id))
+	if(amount <= 0)
+		return null
+	var/datum/gas_mixture/removed = new type
+	removed.set_temperature(return_temperature())
+	adjust_moles(gas_id, -amount)
+	removed.set_moles(gas_id, amount)
+	return removed
 
 /datum/gas_mixture/proc/share(datum/gas_mixture/sharer, atmos_adjacent_turfs = 4)
 	CRASH("gas_mixture/share not implemented! (should be linda specific?)")
@@ -259,7 +273,26 @@ GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
 	return (partial_pressure * BREATH_VOLUME) / (R_IDEAL_GAS_EQUATION * return_temperature())
 
 /datum/gas_mixture/proc/pump_gas_to(datum/gas_mixture/output_air, target_pressure, specific_gas = null)
-	CRASH("gas_mixture/pump_gas_to not implemented!")
+	var/output_starting_pressure = output_air.return_pressure()
+
+	if((target_pressure - output_starting_pressure) < 0.01)
+		//No need to pump gas if target is already reached!
+		return FALSE
+
+	//Calculate necessary moles to transfer using PV=nRT
+	if((total_moles() > 0) && (return_temperature()>0))
+		var/pressure_delta = target_pressure - output_starting_pressure
+		var/transfer_moles = (pressure_delta*output_air.return_volume())/(return_temperature() * R_IDEAL_GAS_EQUATION)
+
+		//Actually transfer the gas
+		if(specific_gas)
+			var/datum/gas_mixture/removed = remove_specific(specific_gas, transfer_moles)
+			output_air.merge(removed)
+			return TRUE
+		var/datum/gas_mixture/removed = remove(transfer_moles)
+		output_air.merge(removed)
+		return TRUE
+	return FALSE
 
 /datum/gas_mixture/proc/release_gas_to(datum/gas_mixture/output_air, target_pressure)
 	var/output_starting_pressure = output_air.return_pressure()
