@@ -214,39 +214,37 @@
 
 	data["product_gases"] = product_gases.Join("\n")
 
-#ifndef AUXMOS
 	//Internal Fusion gases
 	var/list/fusion_gasdata = list()
 	if(connected_core.internal_fusion.total_moles())
-		for(var/gasid in connected_core.internal_fusion.gases)
+		for(var/gasid in connected_core.internal_fusion.get_gases())
 			fusion_gasdata.Add(list(list(
-			"name"= connected_core.internal_fusion.gases[gasid][GAS_META][META_GAS_NAME],
-			"amount" = round(connected_core.internal_fusion.gases[gasid][MOLES], 0.01),
+			"name"= GLOB.meta_gas_info[gasid][META_GAS_NAME],
+			"amount" = round(connected_core.internal_fusion.get_moles(gasid), 0.01),
 			)))
 	else
-		for(var/gasid in connected_core.internal_fusion.gases)
+		for(var/gasid in connected_core.internal_fusion.get_gases())
 			fusion_gasdata.Add(list(list(
-				"name"= connected_core.internal_fusion.gases[gasid][GAS_META][META_GAS_NAME],
+				"name"= GLOB.meta_gas_info[gasid][META_GAS_NAME],
 				"amount" = 0,
 				)))
 	//Moderator gases
 	var/list/moderator_gasdata = list()
 	if(connected_core.moderator_internal.total_moles())
-		for(var/gasid in connected_core.moderator_internal.gases)
+		for(var/gasid in connected_core.moderator_internal.get_gases())
 			moderator_gasdata.Add(list(list(
-			"name"= connected_core.moderator_internal.gases[gasid][GAS_META][META_GAS_NAME],
-			"amount" = round(connected_core.moderator_internal.gases[gasid][MOLES], 0.01),
+			"name"= GLOB.meta_gas_info[gasid][META_GAS_NAME],
+			"amount" = round(connected_core.moderator_internal.get_moles(gasid), 0.01),
 			)))
 	else
-		for(var/gasid in connected_core.moderator_internal.gases)
+		for(var/gasid in connected_core.moderator_internal.get_gases())
 			moderator_gasdata.Add(list(list(
-				"name"= connected_core.moderator_internal.gases[gasid][GAS_META][META_GAS_NAME],
+				"name"= GLOB.meta_gas_info[gasid][META_GAS_NAME],
 				"amount" = 0,
 				)))
 
 	data["fusion_gases"] = fusion_gasdata
 	data["moderator_gases"] = moderator_gasdata
-#endif
 
 	data["energy_level"] = connected_core.energy
 	data["heat_limiter_modifier"] = connected_core.heat_limiter_modifier

@@ -32,7 +32,7 @@
 #ifndef AUXMOS
 				var/gas_level = environment.get_moles(id) / total_moles
 				if(gas_level > 0)
-					airlist += list(list("name" = "[environment.gases[id][GAS_META][META_GAS_NAME]]", "percentage" = round(gas_level*100, 0.01)))
+					airlist += list(list("name" = "[GLOB.meta_gas_info[id][META_GAS_NAME]]", "percentage" = round(gas_level*100, 0.01)))
 #endif
 		data["AirData"] = airlist
 	else

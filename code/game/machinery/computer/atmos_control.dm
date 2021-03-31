@@ -108,11 +108,7 @@
 		var/total_moles = air_sample.total_moles()
 		if(total_moles)
 			for(var/gas_id in air_sample.get_gases())
-#ifdef AUXMOS
-				var/gas_name = "Why is the name in there?!"
-#else
-				var/gas_name = air_sample.gases[gas_id][GAS_META][META_GAS_NAME]
-#endif
+				var/gas_name = GLOB.meta_gas_info[gas_id][META_GAS_NAME]
 				signal.data["gases"][gas_name] = air_sample.get_moles(gas_id) / total_moles * 100
 
 		radio_connection.post_signal(src, signal, filter = RADIO_ATMOSIA)

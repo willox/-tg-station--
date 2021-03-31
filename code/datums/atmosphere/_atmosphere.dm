@@ -60,13 +60,8 @@
 	// Now finally lets make that string
 	var/list/gas_string_builder = list()
 	var/list/gaslist = gasmix.get_gases()
-	for(var/i in gaslist)
-#ifdef AUXMOS
-		// No way to get id!
-#else
-		var/moles = gasmix.get_moles(i)
-		var/list/gas = gaslist[i]
-		gas_string_builder += "[gas[GAS_META][META_GAS_ID]]=[moles]"
-#endif
+	for(var/gas_id in gaslist)
+		var/moles = gasmix.get_moles(gas_id)
+		gas_string_builder += "[GLOB.meta_gas_info[gas_id][META_GAS_ID]]=[moles]"
 	gas_string_builder += "TEMP=[gasmix.return_temperature()]"
 	gas_string = gas_string_builder.Join(";")

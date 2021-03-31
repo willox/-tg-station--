@@ -124,24 +124,15 @@
 	if(bluespace_network.total_moles())
 		for(var/gas_id in bluespace_network.get_gases())
 			bluespace_gasdata.Add(list(list(
-#ifdef AUXMOS
-			"name" = "get gas name",
-			"id" = "get gas id",
-#else
-			"name" = bluespace_network.gases[gas_id][GAS_META][META_GAS_NAME],
-			"id" = bluespace_network.gases[gas_id][GAS_META][META_GAS_ID],
-#endif
+			"name" = GLOB.meta_gas_info[gas_id][META_GAS_NAME],
+			"id" = GLOB.meta_gas_info[gas_id][META_GAS_ID],
 			"amount" = round(bluespace_network.get_moles(gas_id), 0.01),
 			"price" = base_prices[gas_id],
 			)))
 	else
 		for(var/gas_id in bluespace_network.get_gases())
 			bluespace_gasdata.Add(list(list(
-#ifdef AUXMOS
-				"name" = "get gas name",
-#else
-				"name" = bluespace_network.gases[gas_id][GAS_META][META_GAS_NAME],
-#endif
+				"name" = GLOB.meta_gas_info[gas_id][META_GAS_NAME],
 				"id" = "",
 				"amount" = 0,
 				"price" = 0,

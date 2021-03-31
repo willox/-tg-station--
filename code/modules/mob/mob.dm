@@ -118,12 +118,9 @@
 
 	var/t = "<span class='notice'>Coordinates: [x],[y] </span>\n"
 	t += "<span class='danger'>Temperature: [environment.return_temperature()] </span>\n"
-#ifndef AUXMOS
-	for(var/id in environment.gases)
-		var/gas = environment.gases[id]
-		if(gas[MOLES])
-			t+="<span class='notice'>[gas[GAS_META][META_GAS_NAME]]: [gas[MOLES]] </span>\n"
-#endif
+	for(var/id in environment.get_gases())
+		if(environment.has_gas(id))
+			t+="<span class='notice'>[GLOB.meta_gas_info[id][META_GAS_NAME]]: [environment.get_moles(id)] </span>\n"
 
 	to_chat(usr, t)
 

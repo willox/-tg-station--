@@ -23,11 +23,7 @@
 	if(gas_type)
 		air_contents.assert_gas(gas_type)
 		air_contents.set_moles(gas_type, AIR_CONTENTS)
-#ifdef AUXMOS
-		name = "[name] (get gas name!)"
-#else
-		name = "[name] ([air_contents.gases[gas_type][GAS_META][META_GAS_NAME]])"
-#endif
+		name = "[name] ([GLOB.meta_gas_info[gas_type][META_GAS_NAME]])"
 	setPipingLayer(piping_layer)
 
 
