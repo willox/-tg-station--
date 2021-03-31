@@ -155,14 +155,14 @@
 		return FALSE
 	var/datum/gas_mixture/environment = tile.return_air()
 	var/datum/gas_mixture/air_contents = airs[1]
-	var/list/env_gases = environment.gases
+	var/list/env_gases = environment.get_gases()
 
 	if(air_contents.return_pressure() >= 50 * ONE_ATMOSPHERE)
 		return FALSE
 
 	if(scrubbing & SCRUBBING)
 		if(length(env_gases & filter_types))
-			var/transfer_moles = min(1, volume_rate / environment.volume) * environment.total_moles()
+			var/transfer_moles = min(1, volume_rate / environment.return_volume()) * environment.total_moles()
 
 			//Take a gas sample
 			var/datum/gas_mixture/removed = tile.remove_air(transfer_moles)
@@ -171,17 +171,14 @@
 			if(isnull(removed))
 				return FALSE
 
-			var/list/removed_gases = removed.gases
-
 			//Filter it
 			var/datum/gas_mixture/filtered_out = new
-			var/list/filtered_gases = filtered_out.gases
-			filtered_out.temperature = removed.temperature
+			filtered_out.set_temperature(removed.return_temperature())
 
-			for(var/gas in filter_types & removed_gases)
+			for(var/gas in filter_types & removed.get_gases())
 				filtered_out.add_gas(gas)
-				filtered_gases[gas][MOLES] = removed_gases[gas][MOLES]
-				removed_gases[gas][MOLES] = 0
+				filtered_out.set_moles(gas, removed.get_moles(gas))
+				removed.set_moles(gas, 0)
 
 			removed.garbage_collect()
 
@@ -192,7 +189,7 @@
 
 	else //Just siphoning all air
 
-		var/transfer_moles = environment.total_moles() * (volume_rate / environment.volume)
+		var/transfer_moles = environment.total_moles() * (volume_rate / environment.return_volume())
 
 		var/datum/gas_mixture/removed = tile.remove_air(transfer_moles)
 

@@ -31,6 +31,282 @@ GLOBAL_LIST_INIT(gaslist_cache, init_gaslist_cache())
 		cached_gas[ARCHIVE] = 0
 		cached_gas[GAS_META] = GLOB.meta_gas_info[id]
 
+#ifdef AUXMOS
+// Auxmos uses this to get the types
+// TODO: rename, move, or remove
+/proc/gas_types()
+	var/list/L = subtypesof(/datum/gas)
+	for(var/datum/gas/gas as anything in L)
+		L[gas] = initial(gas.specific_heat)
+	return L
+
+// Auxmos uses this
+// TODO: rename, move
+/proc/equalize_all_gases_in_list(list/L)
+	CRASH("auxmos proc not overriden")
+
+// Actual gas mixture
+
+/datum/gas_mixture
+	var/list/reaction_results
+	var/list/analyzer_results //used for analyzer feedback - not initialized until its used
+
+	// AUXMOS TODO: Remove this and pass the volume directly to __gasmixture_register
+	var/initial_volume = CELL_VOLUME
+
+	// Contains the index in the gas vector for this gas mixture in rust land. Don't. Touch. This. Var.
+	// AUXMOS TODO: Rename this lmao
+	var/_extools_pointer_gasmixture
+
+// TODO: Move
+#define AUXMOS "E:\\auxmos\\target\\i686-pc-windows-msvc\\debug\\auxmos.dll"
+#define AUXTOOLS_CHECK \
+	if (!GLOB.auxmos_initialized && fexists(AUXMOS) && try_auxtools_atmos_init()) \
+		GLOB.auxmos_initialized = TRUE;
+GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
+
+/proc/try_auxtools_atmos_init()
+	var/res = call(AUXMOS, "auxtools_init")()
+	if (!findtext(res, "SUCCESS"))
+		world.log << "Fucked up [res]"
+		//del world
+		return FALSE
+	return TRUE
+
+/proc/auxtools_atmos_init()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/New(volume)
+	if (!isnull(volume))
+		initial_volume = volume
+	AUXTOOLS_CHECK
+	if(!GLOB.auxmos_initialized && auxtools_atmos_init())
+		GLOB.auxmos_initialized = TRUE
+	__gasmixture_register()
+	reaction_results = new
+
+/datum/gas_mixture/Del()
+	__gasmixture_unregister()
+	. = ..()
+
+/datum/gas_mixture/proc/__gasmixture_unregister()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/__gasmixture_register()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/heat_capacity()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/total_moles()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/return_pressure()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/return_temperature()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/set_min_heat_capacity(n)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/set_temperature(new_temp)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/set_volume(new_volume)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/get_moles(gas_type)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/set_moles(gas_type, moles)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/scrub_into(datum/gas_mixture/target, list/gases)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/mark_immutable()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/get_gases()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/multiply(factor)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/clear()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/return_volume()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/thermal_energy()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/merge(datum/gas_mixture/giver)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/transfer_to(datum/gas_mixture/target, amount)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/copy_from(datum/gas_mixture/sample)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/temperature_share(datum/gas_mixture/sharer, conduction_coefficient,temperature=null,heat_capacity=null)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/compare(datum/gas_mixture/sample)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/react(datum/holder)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/adjust_heat(amt)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/equalize_with(datum/gas_mixture/giver)
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/__remove()
+	CRASH("auxmos proc not overriden")
+
+/datum/gas_mixture/proc/__remove_ratio()
+	CRASH("auxmos proc not overriden")
+
+// DM stuff
+
+/datum/gas_mixture/proc/remove(amount)
+	var/datum/gas_mixture/removed = new type
+	__remove(removed, amount)
+	return removed
+
+/datum/gas_mixture/proc/remove_ratio(ratio)
+	var/datum/gas_mixture/removed = new type
+	__remove_ratio(removed, ratio)
+	return removed
+
+/datum/gas_mixture/proc/copy()
+	var/datum/gas_mixture/copy = new type
+	copy.copy_from(src)
+	return copy
+
+/datum/gas_mixture/proc/copy_from_turf(turf/model)
+	// TODO: turf/var/temperature has a bad name
+	set_temperature(initial(model.temperature))
+	parse_gas_string(model.initial_gas_mix)
+	return 1
+
+/datum/gas_mixture/proc/parse_gas_string(gas_string)
+	gas_string = SSair.preprocess_gas_string(gas_string)
+
+	var/list/gas = params2list(gas_string)
+	if(gas["TEMP"])
+		var/temp = text2num(gas["TEMP"])
+		gas -= "TEMP"
+		if(!isnum(temp) || temp < 2.7)
+			temp = 2.7
+		set_temperature(temp)
+	else // if we do not have a temp in the new gas mix lets assume room temp.
+		set_temperature(T20C)
+	clear()
+	for(var/id in gas)
+		var/path = id
+		if(!ispath(path))
+			path = gas_id2path(path) //a lot of these strings can't have embedded expressions (especially for mappers), so support for IDs needs to stick around
+		set_moles(path, text2num(gas[id]))
+	return 1
+
+/datum/gas_mixture/proc/adjust_moles(gas_type, amt)
+	set_moles(gas_type, clamp(get_moles(gas_type) + amt, 0, INFINITY))
+
+/datum/gas_mixture/proc/adjust_temperature(amt)
+	set_temperature(return_temperature() + amt)
+
+// Portability wrappers? For now..
+
+/datum/gas_mixture/proc/archive()
+	// Should probably CRASH
+	return
+
+/datum/gas_mixture/proc/assert_gas(gas_id)
+	return
+
+/datum/gas_mixture/proc/assert_gases(...)
+	return
+
+/datum/gas_mixture/proc/add_gas(gas_id)
+	return
+
+/datum/gas_mixture/proc/add_gases(gas_id)
+	return
+
+/datum/gas_mixture/proc/garbage_collect(list/tocheck)
+	return
+
+/datum/gas_mixture/proc/has_gas(gas_id, amount=0)
+	return get_moles(gas_id) >= amount
+
+/datum/gas_mixture/proc/remove_specific(gas_id, amount)
+	CRASH("gas_mixture/remove_specific not implemented!")
+
+/datum/gas_mixture/proc/share(datum/gas_mixture/sharer, atmos_adjacent_turfs = 4)
+	CRASH("gas_mixture/share not implemented! (should be linda specific?)")
+
+/datum/gas_mixture/proc/get_breath_partial_pressure(gas_pressure)
+	return (gas_pressure * R_IDEAL_GAS_EQUATION * return_temperature()) / BREATH_VOLUME
+
+/datum/gas_mixture/proc/get_true_breath_pressure(partial_pressure)
+	return (partial_pressure * BREATH_VOLUME) / (R_IDEAL_GAS_EQUATION * return_temperature())
+
+/datum/gas_mixture/proc/pump_gas_to(datum/gas_mixture/output_air, target_pressure, specific_gas = null)
+	CRASH("gas_mixture/pump_gas_to not implemented!")
+
+/datum/gas_mixture/proc/release_gas_to(datum/gas_mixture/output_air, target_pressure)
+	var/output_starting_pressure = output_air.return_pressure()
+	var/input_starting_pressure = return_pressure()
+
+	if(output_starting_pressure >= min(target_pressure,input_starting_pressure-10))
+		//No need to pump gas if target is already reached or input pressure is too low
+		//Need at least 10 KPa difference to overcome friction in the mechanism
+		return FALSE
+
+	//Calculate necessary moles to transfer using PV = nRT
+	if((total_moles() > 0) && (return_temperature() > 0))
+		var/pressure_delta = min(target_pressure - output_starting_pressure, (input_starting_pressure - output_starting_pressure)/2)
+		//Can not have a pressure delta that would cause output_pressure > input_pressure
+
+		var/transfer_moles = (pressure_delta * output_air.return_volume())/(return_temperature() * R_IDEAL_GAS_EQUATION)
+
+		//Actually transfer the gas
+		var/datum/gas_mixture/removed = remove(transfer_moles)
+		output_air.merge(removed)
+
+		return TRUE
+	return FALSE
+
+// What is the difference with equalize_with?
+// Does the return value matter?
+/datum/gas_mixture/proc/equalize(datum/gas_mixture/other)
+	equalize_all_gases_in_list(list(src, other))
+	return TRUE
+
+/datum/gas_mixture/turf
+	// No changes?
+	var/fuckywucky = 2
+
+// TODO: Does auxmos handle this sub-type's behaviour?
+/*
+/datum/gas_mixture/turf/heat_capacity(data = MOLES)
+	var/list/cached_gases = gases
+	. = 0
+	for(var/id in cached_gases)
+		var/gas_data = cached_gases[id]
+		. += gas_data[data] * gas_data[GAS_META][META_GAS_SPECIFIC_HEAT]
+	if(!.)
+		. += HEAT_CAPACITY_VACUUM //we want vacuums in turfs to have the same heat capacity as space
+*/
+#else
+
 /datum/gas_mixture
 	var/list/gases
 	var/temperature = 0 //kelvins
@@ -106,7 +382,7 @@ GLOBAL_LIST_INIT(gaslist_cache, init_gaslist_cache())
 /datum/gas_mixture/proc/total_moles()
 	var/cached_gases = gases
 	TOTAL_MOLES(cached_gases, .)
-	
+
 /// Checks to see if gas amount exists in mixture.
 /// Do NOT use this in code where performance matters!
 /// It's better to batch calls to garbage_collect(), especially in places where you're checking many gastypes
@@ -558,3 +834,35 @@ get_true_breath_pressure(pp) --> gas_pp = pp/breath_pp*total_moles()
 
 		return TRUE
 	return FALSE
+
+// Now... backwards compatibility hacks!
+/datum/gas_mixture/proc/set_moles(gas_type, amt)
+	ASSERT_GAS(gas_type, src)
+	gases[gas_type][MOLES] = amt
+	garbage_collect()
+
+/datum/gas_mixture/proc/get_moles(gas_type)
+	ASSERT_GAS(gas_type, src)
+	var/result = gases[gas_type][MOLES]
+	garbage_collect()
+	return result
+
+/datum/gas_mixture/proc/adjust_moles(gas_type, amt)
+	ASSERT_GAS(gas_type, src)
+	gases[gas_type][MOLES] += amt
+	garbage_collect()
+
+/datum/gas_mixture/proc/set_temperature(temperature)
+	src.temperature = temperature
+
+/datum/gas_mixture/proc/adjust_temperature(amt)
+	temperature += amt
+
+/datum/gas_mixture/proc/set_volume(volume)
+	src.volume = volume
+
+// This should only have its keys read...
+/datum/gas_mixture/proc/get_gases()
+	return gases
+
+#endif

@@ -214,6 +214,7 @@
 
 	data["product_gases"] = product_gases.Join("\n")
 
+#ifndef AUXMOS
 	//Internal Fusion gases
 	var/list/fusion_gasdata = list()
 	if(connected_core.internal_fusion.total_moles())
@@ -245,6 +246,7 @@
 
 	data["fusion_gases"] = fusion_gasdata
 	data["moderator_gases"] = moderator_gasdata
+#endif
 
 	data["energy_level"] = connected_core.energy
 	data["heat_limiter_modifier"] = connected_core.heat_limiter_modifier

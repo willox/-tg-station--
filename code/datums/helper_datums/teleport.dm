@@ -118,6 +118,9 @@
 		if(!F.air)
 			continue
 
+#ifdef AUXMOS
+		continue
+#else
 		var/datum/gas_mixture/A = F.air
 		var/list/A_gases = A.gases
 		var/trace_gases
@@ -143,6 +146,7 @@
 		var/pressure = A.return_pressure()
 		if((pressure <= 20) || (pressure >= 550))
 			continue
+#endif
 
 		if(extended_safety_checks)
 			if(islava(F)) //chasms aren't /floor, and so are pre-filtered

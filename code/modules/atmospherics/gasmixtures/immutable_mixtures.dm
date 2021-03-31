@@ -1,6 +1,30 @@
 //"immutable" gas mixture used for immutable calculations
 //it can be changed, but any changes will ultimately be undone before they can have any effect
 
+#ifdef AUXMOS
+/datum/gas_mixture/immutable
+	var/initial_temperature
+
+/datum/gas_mixture/immutable/New()
+	..()
+	set_temperature(initial_temperature)
+	populate()
+	mark_immutable()
+
+/datum/gas_mixture/immutable/proc/populate()
+	return
+
+// Space
+/datum/gas_mixture/immutable/space
+	initial_temperature = TCMB
+
+/datum/gas_mixture/immutable/space/populate()
+	set_min_heat_capacity(HEAT_CAPACITY_VACUUM)
+
+// Planetary (TODO)
+/datum/gas_mixture/immutable/planetary
+	initial_temperature = 1337
+#else
 /datum/gas_mixture/immutable
 	var/initial_temperature
 	gc_share = TRUE
@@ -92,5 +116,4 @@
 		ADD_GAS(id, gases)
 		gases[id][MOLES] = mix[id][MOLES]
 		gases[id][ARCHIVE] = mix[id][MOLES]
-
-
+#endif

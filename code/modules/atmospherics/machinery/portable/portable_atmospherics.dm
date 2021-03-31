@@ -18,8 +18,8 @@
 /obj/machinery/portable_atmospherics/Initialize()
 	. = ..()
 	air_contents = new
-	air_contents.volume = volume
-	air_contents.temperature = T20C
+	air_contents.set_volume(volume)
+	air_contents.set_temperature(T20C)
 	SSair.start_processing_machine(src)
 
 /obj/machinery/portable_atmospherics/Destroy()
@@ -185,6 +185,9 @@
 
 /obj/machinery/portable_atmospherics/rad_act(strength)
 	. = ..()
+#ifdef AUXMOS
+	var/gas_change = TRUE
+#else
 	var/gas_change = FALSE
 	var/list/cached_gases = air_contents.gases
 	if(cached_gases[/datum/gas/oxygen] && cached_gases[/datum/gas/carbon_dioxide])
@@ -203,6 +206,7 @@
 		ASSERT_GAS(/datum/gas/tritium, air_contents)
 		cached_gases[/datum/gas/tritium][MOLES] += pulse_strength / 1000
 		strength -= pulse_strength
+#endif
 
 	if(gas_change)
 		air_contents.garbage_collect()

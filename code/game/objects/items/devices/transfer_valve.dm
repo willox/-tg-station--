@@ -123,6 +123,9 @@
 
 
 /obj/item/transfer_valve/proc/merge_gases(datum/gas_mixture/target, change_volume = TRUE)
+#ifdef AUXMOS
+	CRASH("uh oh")
+#else
 	var/target_self = FALSE
 	if(!target || (target == tank_one.air_contents))
 		target = tank_two.air_contents
@@ -130,23 +133,24 @@
 		target_self = TRUE
 	if(change_volume)
 		if(!target_self)
-			target.volume += tank_two.volume
-		target.volume += tank_one.air_contents.volume
+			target.set_volume(target.return_volume() + tank_two.return_volume())
+		target.set_volume(target.return_volume() + tank_one.air_contents.volume)
 	var/datum/gas_mixture/temp
 	temp = tank_one.air_contents.remove_ratio(1)
 	target.merge(temp)
 	if(!target_self)
 		temp = tank_two.air_contents.remove_ratio(1)
 		target.merge(temp)
+#endif
 
 /obj/item/transfer_valve/proc/split_gases()
 	if (!valve_open || !tank_one || !tank_two)
 		return
-	var/ratio1 = tank_one.air_contents.volume/tank_two.air_contents.volume
+	var/ratio1 = tank_one.air_contents.return_volume() / tank_two.air_contents.return_volume()
 	var/datum/gas_mixture/temp
 	temp = tank_two.air_contents.remove_ratio(ratio1)
 	tank_one.air_contents.merge(temp)
-	tank_two.air_contents.volume -=  tank_one.air_contents.volume
+	tank_two.air_contents.set_volume(tank_two.air_contents.return_volume() - tank_one.air_contents.return_volume())
 
 /*
 	Exadv1: I know this isn't how it's going to work, but this was just to check

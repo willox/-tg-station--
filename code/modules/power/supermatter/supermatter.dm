@@ -290,10 +290,10 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 	if(integrity < SUPERMATTER_DANGER_PERCENT)
 		return SUPERMATTER_DANGER
 
-	if((integrity < SUPERMATTER_WARNING_PERCENT) || (air.temperature > CRITICAL_TEMPERATURE))
+	if((integrity < SUPERMATTER_WARNING_PERCENT) || (air.return_temperature() > CRITICAL_TEMPERATURE))
 		return SUPERMATTER_WARNING
 
-	if(air.temperature > (CRITICAL_TEMPERATURE * 0.8))
+	if(air.return_temperature() > (CRITICAL_TEMPERATURE * 0.8))
 		return SUPERMATTER_NOTIFY
 
 	if(power > 5)
@@ -463,7 +463,7 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 			//((((some value between 0.5 and 1 * temp - ((273.15 + 40) * some values between 1 and 10)) * some number between 0.25 and knock your socks off / 150) * 0.25
 			//Heat and mols account for each other, a lot of hot mols are more damaging then a few
 			//Mols start to have a positive effect on damage after 350
-			damage = max(damage + (max(clamp(removed.total_moles() / 200, 0.5, 1) * removed.temperature - ((T0C + HEAT_PENALTY_THRESHOLD)*dynamic_heat_resistance), 0) * mole_heat_penalty / 150 ) * DAMAGE_INCREASE_MULTIPLIER, 0)
+			damage = max(damage + (max(clamp(removed.total_moles() / 200, 0.5, 1) * removed.return_temperature() - ((T0C + HEAT_PENALTY_THRESHOLD)*dynamic_heat_resistance), 0) * mole_heat_penalty / 150 ) * DAMAGE_INCREASE_MULTIPLIER, 0)
 			//Power only starts affecting damage when it is above 5000
 			damage = max(damage + (max(power - POWER_PENALTY_THRESHOLD, 0)/500) * DAMAGE_INCREASE_MULTIPLIER, 0)
 			//Molar count only starts affecting damage when it is above 1800
@@ -473,7 +473,7 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 			//healing damage
 			if(combined_gas < MOLE_PENALTY_THRESHOLD)
 				//Only has a net positive effect when the temp is below 313.15, heals up to 2 damage. Psycologists increase this temp min by up to 45
-				damage = max(damage + (min(removed.temperature - ((T0C + HEAT_PENALTY_THRESHOLD) + (45 * psyCoeff)), 0) / 150 ), 0)
+				damage = max(damage + (min(removed.return_temperature() - ((T0C + HEAT_PENALTY_THRESHOLD) + (45 * psyCoeff)), 0) / 150 ), 0)
 
 			//Check for holes in the SM inner chamber
 			for(var/t in RANGE_TURFS(1, loc))
@@ -512,7 +512,7 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 		//Prevents huge bursts of gas/heat when a large amount of something is introduced
 		//They range between 0 and 1
 		for(var/gasID in gases_we_care_about)
-			gas_comp[gasID] = clamp(removed.gases[gasID][MOLES] / combined_gas, 0, 1)
+			gas_comp[gasID] = clamp(removed.get_moles(gasID) / combined_gas, 0, 1)
 
 		var/list/heat_mod = gases_we_care_about.Copy()
 		var/list/transit_mod = gases_we_care_about.Copy()
@@ -554,7 +554,7 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 			var/consumed_miasma = clamp(((miasma_pp - MIASMA_CONSUMPTION_PP) / (miasma_pp + MIASMA_PRESSURE_SCALING)) * (1 + (gasmix_power_ratio * MIASMA_GASMIX_SCALING)), MIASMA_CONSUMPTION_RATIO_MIN, MIASMA_CONSUMPTION_RATIO_MAX)
 			consumed_miasma *= gas_comp[/datum/gas/miasma] * combined_gas
 			if(consumed_miasma)
-				removed.gases[/datum/gas/miasma][MOLES] -= consumed_miasma
+				removed.adjust_moles(/datum/gas/miasma, -consumed_miasma)
 				matter_power += consumed_miasma * MIASMA_POWER_GAIN
 
 		//more moles of gases are harder to heat than fewer, so let's scale heat damage around them
@@ -592,7 +592,7 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 
 		//if there is more pluox and n2 then anything else, we receive no power increase from heat
 		if(power_changes)
-			power = max((removed.temperature * temp_factor / T0C) * gasmix_power_ratio + power, 0)
+			power = max((removed.return_temperature() * temp_factor / T0C) * gasmix_power_ratio + power, 0)
 
 		if(prob(50))
 			//(1 + (tritRad + pluoxDampen * bzDampen * o2Rad * plasmaRad / (10 - bzrads))) * freonbonus
@@ -616,15 +616,15 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 		//Also keep in mind we are only adding this temperature to (efficiency)% of the one tile the rock
 		//is on. An increase of 4*C @ 25% efficiency here results in an increase of 1*C / (#tilesincore) overall.
 		//Power * 0.55 * (some value between 1.5 and 23) / 5
-		removed.temperature += ((device_energy * dynamic_heat_modifier) / THERMAL_RELEASE_MODIFIER)
+		removed.set_temperature(removed.return_temperature() + ((device_energy * dynamic_heat_modifier) / THERMAL_RELEASE_MODIFIER))
 		//We can only emit so much heat, that being 57500
-		removed.temperature = max(0, min(removed.temperature, 2500 * dynamic_heat_modifier))
+		removed.set_temperature(max(0, min(removed.return_temperature(), 2500 * dynamic_heat_modifier)))
 
 		//Calculate how much gas to release
 		//Varies based on power and gas content
-		removed.gases[/datum/gas/plasma][MOLES] += max((device_energy * dynamic_heat_modifier) / PLASMA_RELEASE_MODIFIER, 0)
+		removed.adjust_moles(/datum/gas/plasma, max((device_energy * dynamic_heat_modifier) / PLASMA_RELEASE_MODIFIER, 0))
 		//Varies based on power, gas content, and heat
-		removed.gases[/datum/gas/oxygen][MOLES] += max(((device_energy + removed.temperature * dynamic_heat_modifier) - T0C) / OXYGEN_RELEASE_MODIFIER, 0)
+		removed.adjust_moles(/datum/gas/oxygen, max(((device_energy + removed.return_temperature() * dynamic_heat_modifier) - T0C) / OXYGEN_RELEASE_MODIFIER, 0))
 
 		if(produces_gas)
 			removed.garbage_collect()

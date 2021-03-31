@@ -172,10 +172,10 @@
 	. = air.heat_capacity()
 
 /turf/open/proc/GetTemperature()
-	. = air.temperature
+	. = air.return_temperature()
 
 /turf/open/proc/TakeTemperature(temp)
-	air.temperature += temp
+	air.set_temperature(air.return_temperature() + temp)
 	air_update_turf(FALSE, FALSE)
 
 /turf/open/proc/freon_gas_act()
@@ -262,6 +262,7 @@
 
 /turf/open/rad_act(strength)
 	. = ..()
+#ifndef AUXMOS
 	var/gas_change = FALSE
 	var/list/cached_gases = air.gases
 	if(cached_gases[/datum/gas/oxygen] && cached_gases[/datum/gas/carbon_dioxide])
@@ -284,4 +285,5 @@
 	if(gas_change)
 		air.garbage_collect()
 		air_update_turf(FALSE, FALSE)
+#endif
 

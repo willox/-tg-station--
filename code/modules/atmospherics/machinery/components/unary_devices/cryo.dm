@@ -264,7 +264,7 @@ GLOBAL_VAR_INIT(cryo_overlay_cover_off, mutable_appearance('icons/obj/cryogenics
 
 	var/datum/gas_mixture/air1 = airs[1]
 
-	if(air1.gases[/datum/gas/oxygen][MOLES] > CRYO_MIN_GAS_MOLES)
+	if(air1.get_moles(/datum/gas/oxygen) > CRYO_MIN_GAS_MOLES)
 		if(mob_occupant.bodytemperature < T0C) // Sleepytime. Why? More cryo magic.
 			mob_occupant.Sleeping((mob_occupant.bodytemperature * sleep_factor) * 1000 * delta_time)
 			mob_occupant.Unconscious((mob_occupant.bodytemperature * unconscious_factor) * 1000 * delta_time)
@@ -281,7 +281,7 @@ GLOBAL_VAR_INIT(cryo_overlay_cover_off, mutable_appearance('icons/obj/cryogenics
 
 	var/datum/gas_mixture/air1 = airs[1]
 
-	if(!nodes[1] || !airs[1] || !air1.gases.len || air1.gases[/datum/gas/oxygen][MOLES] < CRYO_MIN_GAS_MOLES) // Turn off if the machine won't work.
+	if(!nodes[1] || !airs[1] || air1.get_moles(/datum/gas/oxygen) < CRYO_MIN_GAS_MOLES) // Turn off if the machine won't work.
 		var/msg = "Insufficient cryogenic gas, shutting down."
 		radio.talk_into(src, msg, radio_channel)
 		set_on(FALSE)
@@ -290,18 +290,18 @@ GLOBAL_VAR_INIT(cryo_overlay_cover_off, mutable_appearance('icons/obj/cryogenics
 	if(occupant)
 		var/mob/living/mob_occupant = occupant
 		var/cold_protection = 0
-		var/temperature_delta = air1.temperature - mob_occupant.bodytemperature // The only semi-realistic thing here: share temperature between the cell and the occupant.
+		var/temperature_delta = air1.return_temperature() - mob_occupant.bodytemperature // The only semi-realistic thing here: share temperature between the cell and the occupant.
 
 		if(ishuman(mob_occupant))
 			var/mob/living/carbon/human/H = mob_occupant
-			cold_protection = H.get_cold_protection(air1.temperature)
+			cold_protection = H.get_cold_protection(air1.return_temperature())
 
 		if(abs(temperature_delta) > 1)
 			var/air_heat_capacity = air1.heat_capacity()
 
 			var/heat = ((1 - cold_protection) * 0.1 + conduction_coefficient) * temperature_delta * (air_heat_capacity * heat_capacity / (air_heat_capacity + heat_capacity))
 
-			air1.temperature = clamp(air1.temperature - heat / air_heat_capacity, TCMB, MAX_TEMPERATURE)
+			air1.set_temperature(clamp(air1.return_temperature() - heat / air_heat_capacity, TCMB, MAX_TEMPERATURE))
 			mob_occupant.adjust_bodytemperature(heat / heat_capacity, TCMB)
 
 			//lets have the core temp match the body temp in humans
@@ -310,14 +310,14 @@ GLOBAL_VAR_INIT(cryo_overlay_cover_off, mutable_appearance('icons/obj/cryogenics
 				humi.adjust_coretemperature(humi.bodytemperature - humi.coretemperature)
 
 		if(consume_gas) // Transferring reagent costs us extra gas
-			air1.gases[/datum/gas/oxygen][MOLES] -= max(0, 2 / efficiency + 1 / efficiency) // Magically consume gas? Why not, we run on cryo magic.
+			air1.adjust_moles(/datum/gas/oxygen, -max(0, 2 / efficiency + 1 / efficiency)) // Magically consume gas? Why not, we run on cryo magic.
 			consume_gas = FALSE
 		if(!consume_gas)
-			air1.gases[/datum/gas/oxygen][MOLES] -= max(0, 2 / efficiency)
+			air1.adjust_moles(/datum/gas/oxygen, -max(0, 2 / efficiency))
 		air1.garbage_collect()
 
-		if(air1.temperature > 2000)
-			take_damage(clamp((air1.temperature)/200, 10, 20), BURN)
+		if(air1.return_temperature() > 2000)
+			take_damage(clamp((air1.return_temperature())/200, 10, 20), BURN)
 
 		update_parents()
 
@@ -453,7 +453,7 @@ GLOBAL_VAR_INIT(cryo_overlay_cover_off, mutable_appearance('icons/obj/cryogenics
 			data["occupant"]["temperaturestatus"] = "bad"
 
 	var/datum/gas_mixture/air1 = airs[1]
-	data["cellTemperature"] = round(air1.temperature, 1)
+	data["cellTemperature"] = round(air1.return_temperature(), 1)
 
 	data["isBeakerLoaded"] = beaker ? TRUE : FALSE
 	var/beakerContents = list()
@@ -520,7 +520,7 @@ GLOBAL_VAR_INIT(cryo_overlay_cover_off, mutable_appearance('icons/obj/cryogenics
 	var/datum/gas_mixture/G = airs[1]
 
 	if(G.total_moles() > 10)
-		return G.temperature
+		return G.return_temperature()
 	return ..()
 
 /obj/machinery/atmospherics/components/unary/cryo_cell/default_change_direction_wrench(mob/user, obj/item/wrench/W)

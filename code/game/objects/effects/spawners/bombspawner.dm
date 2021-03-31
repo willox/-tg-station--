@@ -25,13 +25,13 @@
 
 	var/datum/gas_mixture/plasma_mix = plasma_tank.air_contents
 	plasma_mix.assert_gas(/datum/gas/plasma)
-	plasma_mix.gases[/datum/gas/plasma][MOLES] = pressure_p*plasma_mix.volume/(R_IDEAL_GAS_EQUATION*temp_p)
-	plasma_mix.temperature = temp_p
+	plasma_mix.set_moles(/datum/gas/plasma, pressure_p*plasma_mix.return_volume()/(R_IDEAL_GAS_EQUATION*temp_p))
+	plasma_mix.set_temperature(temp_p)
 
 	var/datum/gas_mixture/oxygen_mix = oxygen_tank.air_contents
 	oxygen_mix.assert_gas(/datum/gas/oxygen)
-	oxygen_mix.gases[/datum/gas/oxygen][MOLES] = pressure_o*oxygen_mix.volume/(R_IDEAL_GAS_EQUATION*temp_o)
-	oxygen_mix.temperature = temp_o
+	oxygen_mix.set_moles(/datum/gas/oxygen, pressure_o*oxygen_mix.return_volume()/(R_IDEAL_GAS_EQUATION*temp_o))
+	oxygen_mix.set_temperature(temp_o)
 
 	ttv.tank_one = plasma_tank
 	ttv.tank_two = oxygen_tank

@@ -96,6 +96,7 @@
 	if(!removed)
 		return
 
+#ifndef AUXMOS
 	removed.assert_gases(/datum/gas/water_vapor, /datum/gas/oxygen, /datum/gas/hydrogen)
 	var/proportion = min(removed.gases[/datum/gas/water_vapor][MOLES], (1.5 * delta_time * workingPower))//Works to max 12 moles at a time.
 	removed.gases[/datum/gas/water_vapor][MOLES] -= proportion * 2 * workingPower
@@ -104,6 +105,7 @@
 	env.merge(removed) //put back the new gases in the turf
 	air_update_turf(FALSE, FALSE)
 	cell.use((5 * proportion * workingPower) / (efficiency + workingPower))
+#endif
 
 /obj/machinery/electrolyzer/RefreshParts()
 	var/electrolite = 0

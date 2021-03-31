@@ -524,12 +524,16 @@ GLOBAL_LIST_INIT(pipe_paint_colors, sortList(list(
 	T.pixel_x = (PipingLayer - PIPING_LAYER_DEFAULT) * PIPING_LAYER_P_X;\
 	T.pixel_y = (PipingLayer - PIPING_LAYER_DEFAULT) * PIPING_LAYER_P_Y;
 
-#define THERMAL_ENERGY(gas) (gas.temperature * gas.heat_capacity())
+#define THERMAL_ENERGY(gas) (gas.return_temperature() * gas.heat_capacity())
 
 #define ADD_GAS(gas_id, out_list)\
 	var/list/tmp_gaslist = GLOB.gaslist_cache[gas_id]; out_list[gas_id] = tmp_gaslist.Copy();
 
+#ifdef AUXMOS
+#define ASSERT_GAS(gas_id, gas_mixture)
+#else
 #define ASSERT_GAS(gas_id, gas_mixture) if (!gas_mixture.gases[gas_id]) { ADD_GAS(gas_id, gas_mixture.gases) };
+#endif
 
 //prefer this to gas_mixture/total_moles in performance critical areas
 #define TOTAL_MOLES(cached_gases, out_var)\

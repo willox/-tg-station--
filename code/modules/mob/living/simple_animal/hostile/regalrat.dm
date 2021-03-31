@@ -82,9 +82,9 @@
 
 /mob/living/simple_animal/hostile/regalrat/handle_environment(datum/gas_mixture/environment)
 	. = ..()
-	if(stat == DEAD || !environment || !environment.gases[/datum/gas/miasma])
+	if(stat == DEAD || !environment || !environment.has_gas(/datum/gas/miasma))
 		return
-	var/miasma_percentage = environment.gases[/datum/gas/miasma][MOLES] / environment.total_moles()
+	var/miasma_percentage = environment.get_moles(/datum/gas/miasma) / environment.total_moles()
 	if(miasma_percentage>=0.25)
 		heal_bodypart_damage(1)
 

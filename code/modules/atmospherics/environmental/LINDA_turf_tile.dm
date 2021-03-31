@@ -37,6 +37,28 @@
 	var/max_share = 0
 	#endif
 
+// AUXMOS stubs! TODO: Move, etc.
+#ifdef AUXMOS
+/turf/return_temperature()
+	CRASH("auxtools proc not overriden")
+
+/turf/proc/update_air_ref()
+	CRASH("auxtools proc not overriden")
+
+/turf/proc/__auxtools_update_turf_temp_info()
+	CRASH("auxtools proc not overriden")
+
+/turf/proc/set_sleeping()
+	CRASH("auxtools proc not overriden")
+
+/turf/proc/__update_auxtools_turf_adjacency_info()
+	CRASH("auxtools proc not overriden")
+
+/turf/proc/set_temperature()
+	CRASH("auxtools proc not overriden")
+
+#endif
+
 /turf/open/Initialize()
 	if(!blocks_air)
 		air = new
@@ -44,7 +66,9 @@
 		if(planetary_atmos)
 			if(!SSair.planetary[initial_gas_mix])
 				var/datum/gas_mixture/immutable/planetary/mix = new
+#ifndef AUXMOS
 				mix.parse_string_immutable(initial_gas_mix)
+#endif
 				SSair.planetary[initial_gas_mix] = mix
 	. = ..()
 
@@ -139,7 +163,9 @@
 
 
 /turf/open/proc/update_visuals()
-
+#ifdef AUXMOS
+	return
+#else
 	var/list/atmos_overlay_types = src.atmos_overlay_types // Cache for free performance
 	var/list/new_overlay_types = list()
 	var/static/list/nonoverlaying_gases = typecache_of_gases_with_no_overlays()
@@ -151,8 +177,8 @@
 			src.atmos_overlay_types = null
 		return
 
-	var/list/gases = air.gases
 
+	var/list/gases = air.gases
 	for(var/id in gases)
 		if (nonoverlaying_gases[id])
 			continue
@@ -174,6 +200,7 @@
 
 	UNSETEMPTY(new_overlay_types)
 	src.atmos_overlay_types = new_overlay_types
+#endif
 
 /proc/typecache_of_gases_with_no_overlays()
 	. = list()
@@ -235,6 +262,10 @@
 /turf/proc/process_cell(fire_count)
 	SSair.remove_from_active(src)
 
+#ifdef AUXMOS
+/turf/open/process_cell(fire_count)
+	CRASH("process_cell should not be reachable in auxmos")
+#else
 /turf/open/process_cell(fire_count)
 	if(archived_cycle < fire_count) //archive self if not already done
 		archive()
@@ -330,6 +361,7 @@
 
 	significant_share_ticker = cached_ticker //Save our changes
 	temperature_expose(our_air, our_air.temperature)
+#endif
 
 //////////////////////////SPACEWIND/////////////////////////////
 
@@ -421,6 +453,10 @@
 	breakdown_cooldown = 0
 	dismantle_cooldown = 0
 
+#ifdef AUXMOS
+/datum/excited_group/proc/self_breakdown(roundstart = FALSE, poke_turfs = FALSE)
+	CRASH("self_breakdown")
+#else
 /datum/excited_group/proc/self_breakdown(roundstart = FALSE, poke_turfs = FALSE)
 	var/datum/gas_mixture/A = new
 
@@ -470,6 +506,7 @@
 			T.significant_share_ticker = EXCITED_GROUP_DISMANTLE_CYCLES //Max out the ticker, if they don't share next tick, nuke em
 
 	breakdown_cooldown = 0
+#endif
 
 ///Dismantles the excited group, puts allll the turfs to sleep
 /datum/excited_group/proc/dismantle()
@@ -599,7 +636,7 @@ Then we space some of our heat, and think about if we should stop conducting.
 	//Conduct with air on my tile if I have it
 	if(!blocks_air)
 		temperature = air.temperature_share(null, thermal_conductivity, temperature, heat_capacity)
-	..((blocks_air ? temperature : air.temperature))
+	..((blocks_air ? temperature : air.return_temperature()))
 
 ///Should we attempt to superconduct?
 /turf/proc/consider_superconductivity(starting)
@@ -610,7 +647,7 @@ Then we space some of our heat, and think about if we should stop conducting.
 	return TRUE
 
 /turf/open/consider_superconductivity(starting)
-	if(air.temperature < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION))
+	if(air.return_temperature() < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION))
 		return FALSE
 	if(air.heat_capacity() < M_CELL_WITH_RATIO) // Was: MOLES_CELLSTANDARD*0.1*0.05 Since there are no variables here we can make this a constant.
 		return FALSE

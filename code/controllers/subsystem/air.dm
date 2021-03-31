@@ -47,6 +47,44 @@ SUBSYSTEM_DEF(air)
 	var/list/queued_for_activation
 	var/display_all_groups = FALSE
 
+// AUXMOS stubs! TODO: Move, etc.
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/auxtools_update_reactions()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/get_amt_gas_mixes()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/get_max_gas_mixes()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/process_turfs_auxtools()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/finish_turf_processing_auxtools()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/turf_process_time()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/thread_running()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/heat_process_time()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/process_turf_heat()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/post_process_turfs_auxtools()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/process_excited_groups_auxtools()
+	CRASH("auxmos proc not overriden")
+
+/datum/controller/subsystem/air/proc/process_turf_equalize_auxtools()
+	CRASH("auxmos proc not overriden")
+#endif
 
 /datum/controller/subsystem/air/stat_entry(msg)
 	msg += "C:{"
@@ -310,6 +348,10 @@ SUBSYSTEM_DEF(air)
 		if (MC_TICK_CHECK)
 			return
 
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/process_excited_groups(resumed = FALSE)
+	CRASH("process_excited_groups NYI")
+#else
 /datum/controller/subsystem/air/proc/process_excited_groups(resumed = FALSE)
 	if (!resumed)
 		src.currentrun = excited_groups.Copy()
@@ -326,6 +368,7 @@ SUBSYSTEM_DEF(air)
 			EG.dismantle()
 		if (MC_TICK_CHECK)
 			return
+#endif
 
 /datum/controller/subsystem/air/proc/process_rebuilds()
 	//Yes this does mean rebuilding pipenets can freeze up the subsystem forever, but if we're in that situation something else is very wrong
@@ -386,7 +429,7 @@ SUBSYSTEM_DEF(air)
 			net.members += item
 			border += item
 
-			net.air.volume += item.volume
+			net.air.set_volume(net.air.return_volume() + item.volume)
 			item.parent = net
 
 			if(item.air_temporary)

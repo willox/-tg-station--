@@ -142,7 +142,7 @@
 	var/datum/gas_mixture/thermal_exchange_port = airs[2]
 	var/main_heat_capacity = main_port.heat_capacity()
 	var/thermal_heat_capacity = thermal_exchange_port.heat_capacity()
-	var/temperature_delta = main_port.temperature - target_temperature
+	var/temperature_delta = main_port.return_temperature() - target_temperature
 	temperature_delta = cooling ? max(temperature_delta, 0) : min(temperature_delta, 0) //no cheesy strats
 
 	var/motor_heat = 2500
@@ -155,12 +155,12 @@
 	var/skip_tick = TRUE
 	if(!use_enviroment_heat && main_port.total_moles() > 0.01 && thermal_exchange_port.total_moles() > 0.01 && nodes[2])
 		if(cooling)
-			thermal_exchange_port.temperature = max(thermal_exchange_port.temperature + heat_amount / thermal_heat_capacity + motor_heat / thermal_heat_capacity, TCMB)
-		temperature_difference = thermal_exchange_port.temperature - main_port.temperature
+			thermal_exchange_port.set_temperature(max(thermal_exchange_port.return_temperature() + heat_amount / thermal_heat_capacity + motor_heat / thermal_heat_capacity, TCMB))
+		temperature_difference = thermal_exchange_port.return_temperature() - main_port.return_temperature()
 		temperature_difference = cooling ? temperature_difference : 0
 		if(temperature_difference > 0)
 			efficiency = max(1 - log(10, temperature_difference) * 0.08, 0.65)
-		main_port.temperature = max(main_port.temperature - (heat_amount * efficiency)/ main_heat_capacity + motor_heat / main_heat_capacity, TCMB)
+		main_port.set_temperature(max(main_port.return_temperature() - (heat_amount * efficiency)/ main_heat_capacity + motor_heat / main_heat_capacity, TCMB))
 		skip_tick = FALSE
 	if(use_enviroment_heat && main_port.total_moles() > 0.01 && enviroment.total_moles() > 0.01)
 		var/enviroment_efficiency = 0
@@ -168,13 +168,13 @@
 			var/enviroment_heat_capacity = enviroment.heat_capacity()
 			if(enviroment.total_moles())
 				enviroment_efficiency = clamp(log(1.55, enviroment.total_moles()) * 0.15, 0.65, 1)
-			enviroment.temperature = max(enviroment.temperature + heat_amount / enviroment_heat_capacity, TCMB)
+			enviroment.set_temperature(max(enviroment.return_temperature() + heat_amount / enviroment_heat_capacity, TCMB))
 			air_update_turf(FALSE, FALSE)
-		temperature_difference = enviroment.temperature - main_port.temperature
+		temperature_difference = enviroment.return_temperature() - main_port.return_temperature()
 		temperature_difference = cooling ? temperature_difference : 0
 		if(temperature_difference > 0)
 			efficiency = max(1 - log(10, temperature_difference) * 0.08, 0.65)
-		main_port.temperature = max(main_port.temperature - (heat_amount * efficiency * enviroment_efficiency) / main_heat_capacity + motor_heat / main_heat_capacity, TCMB)
+		main_port.set_temperature(max(main_port.return_temperature() - (heat_amount * efficiency * enviroment_efficiency) / main_heat_capacity + motor_heat / main_heat_capacity, TCMB))
 		skip_tick = FALSE
 
 	skipping_work = skip_tick
@@ -285,7 +285,7 @@
 	data["initial"] = initial(target_temperature)
 
 	var/datum/gas_mixture/air1 = airs[1]
-	data["temperature"] = air1.temperature
+	data["temperature"] = air1.return_temperature()
 	data["pressure"] = air1.return_pressure()
 
 	data["holding"] = holding ? TRUE : FALSE

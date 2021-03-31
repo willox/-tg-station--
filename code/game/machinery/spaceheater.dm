@@ -93,9 +93,9 @@
 	var/datum/gas_mixture/enviroment = local_turf.return_air()
 
 	var/new_mode = HEATER_MODE_STANDBY
-	if(set_mode != HEATER_MODE_COOL && enviroment.temperature < target_temperature - temperature_tolerance)
+	if(set_mode != HEATER_MODE_COOL && enviroment.return_temperature() < target_temperature - temperature_tolerance)
 		new_mode = HEATER_MODE_HEAT
-	else if(set_mode != HEATER_MODE_HEAT && enviroment.temperature > target_temperature + temperature_tolerance)
+	else if(set_mode != HEATER_MODE_HEAT && enviroment.return_temperature() > target_temperature + temperature_tolerance)
 		new_mode = HEATER_MODE_COOL
 
 	if(mode != new_mode)
@@ -106,7 +106,7 @@
 		return
 
 	var/heat_capacity = enviroment.heat_capacity()
-	var/required_energy = abs(enviroment.temperature - target_temperature) * heat_capacity
+	var/required_energy = abs(enviroment.return_temperature() - target_temperature) * heat_capacity
 	required_energy = min(required_energy, heating_power * delta_time)
 
 	if(required_energy < 1)
@@ -116,7 +116,7 @@
 	if(mode == HEATER_MODE_COOL)
 		delta_temperature *= -1
 	if(delta_temperature)
-		enviroment.temperature += delta_temperature
+		enviroment.adjust_temperature(delta_temperature)
 		air_update_turf(FALSE, FALSE)
 	cell.use(required_energy / efficiency)
 
@@ -197,9 +197,9 @@
 	var/current_temperature
 	if(istype(local_turf))
 		var/datum/gas_mixture/enviroment = local_turf.return_air()
-		current_temperature = enviroment.temperature
+		current_temperature = enviroment.return_temperature()
 	else if(isturf(local_turf))
-		current_temperature = local_turf.temperature
+		current_temperature = local_turf.return_temperature()
 	if(isnull(current_temperature))
 		data["currentTemp"] = "N/A"
 	else

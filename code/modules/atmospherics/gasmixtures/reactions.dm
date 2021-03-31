@@ -91,14 +91,15 @@ nobiliumsuppression = INFINITY
 /datum/gas_reaction/water_vapor/react(datum/gas_mixture/air, datum/holder)
 	var/turf/open/location = isturf(holder) ? holder : null
 	. = NO_REACTION
-	if (air.temperature <= WATER_VAPOR_FREEZE)
+	if (air.return_temperature() <= WATER_VAPOR_FREEZE)
 		if(location?.freon_gas_act())
 			. = REACTING
-	else if(air.temperature <= T20C + 10)
+	else if(air.return_temperature() <= T20C + 10)
 		if(location?.water_vapor_gas_act())
-			air.gases[/datum/gas/water_vapor][MOLES] -= MOLES_GAS_VISIBLE
+			air.adjust_moles(/datum/gas/water_vapor, -MOLES_GAS_VISIBLE)
 			. = REACTING
 
+#ifndef AUXMOS
 //tritium combustion: combustion of oxygen and tritium (treated as hydrocarbons). creates hotspots. exothermic
 /datum/gas_reaction/nitrous_decomp
 	priority = 0
@@ -137,7 +138,9 @@ nobiliumsuppression = INFINITY
 			air.temperature = (temperature * old_heat_capacity + energy_released) / new_heat_capacity
 		return REACTING
 	return NO_REACTION
+#endif
 
+#ifndef AUXMOS
 //tritium combustion: combustion of oxygen and tritium (treated as hydrocarbons). creates hotspots. exothermic
 /datum/gas_reaction/tritfire
 	priority = -2 //fire should ALWAYS be last, but tritium fires happen before plasma fires
@@ -199,7 +202,9 @@ nobiliumsuppression = INFINITY
 			location.hotspot_expose(temperature, CELL_VOLUME)
 
 	return cached_results["fire"] ? REACTING : NO_REACTION
+#endif
 
+#ifndef AUXMOS
 //plasma combustion: combustion of oxygen and plasma (treated as hydrocarbons). creates hotspots. exothermic
 /datum/gas_reaction/plasmafire
 	priority = -4 //fire should ALWAYS be last, but plasma fires happen after tritium fires
@@ -272,7 +277,9 @@ nobiliumsuppression = INFINITY
 			location.hotspot_expose(temperature, CELL_VOLUME)
 
 	return cached_results["fire"] ? REACTING : NO_REACTION
+#endif
 
+#ifndef AUXMOS
 //freon reaction (is not a fire yet)
 /datum/gas_reaction/freonfire
 	priority = -5
@@ -329,7 +336,9 @@ nobiliumsuppression = INFINITY
 		var/new_heat_capacity = air.heat_capacity()
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = (temperature * old_heat_capacity + energy_released) / new_heat_capacity
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/h2fire
 	priority = -3 //fire should ALWAYS be last, but tritium fires happen before plasma fires
 	name = "Hydrogen Combustion"
@@ -385,7 +394,9 @@ nobiliumsuppression = INFINITY
 			location.hotspot_expose(temperature, CELL_VOLUME)
 
 	return cached_results["fire"] ? REACTING : NO_REACTION
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/nitrousformation //formationn of n2o, esothermic, requires bz as catalyst
 	priority = 3
 	name = "Nitrous Oxide formation"
@@ -418,7 +429,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity + energy_used) / new_heat_capacity), TCMB) //the air heats up when reacting
 		return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/nitryl_decomposition //The decomposition of nitryl. Exothermic. Requires oxygen as catalyst.
 	priority = 21
 	name = "Nitryl Decomposition"
@@ -449,7 +462,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity + energy_produced) / new_heat_capacity), TCMB) //the air heats up when reacting
 		return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/nitrylformation //The formation of nitryl. Endothermic. Requires bz.
 	priority = 3
 	name = "Nitryl formation"
@@ -484,7 +499,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity - energy_used) / new_heat_capacity), TCMB) //the air cools down when reacting
 		return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/bzformation //Formation of BZ by combining plasma and tritium at low pressures. Exothermic.
 	priority = 4
 	name = "BZ Gas formation"
@@ -519,7 +536,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity + energy_released) / new_heat_capacity), TCMB)
 		return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/freonformation
 	priority = 5
 	name = "Freon formation"
@@ -552,7 +571,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity - energy_used)/new_heat_capacity), TCMB)
 		return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/stimformation //Stimulum formation follows a strange pattern of how effective it will be at a given temperature, having some multiple peaks and some large dropoffs. Exo and endo thermic.
 	priority = 6
 	name = "Stimulum formation"
@@ -582,7 +603,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((air.temperature * old_heat_capacity + stim_energy_change) / new_heat_capacity), TCMB)
 		return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/nobliumformation //Hyper-Noblium formation is extrememly endothermic, but requires high temperatures to start. Due to its high mass, hyper-nobelium uses large amounts of nitrogen and tritium. BZ can be used as a catalyst to make it less endothermic.
 	priority = 7
 	name = "Hyper-Noblium condensation"
@@ -612,8 +635,9 @@ nobiliumsuppression = INFINITY
 		var/new_heat_capacity = air.heat_capacity()
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((air.temperature * old_heat_capacity + energy_produced) / new_heat_capacity), TCMB)
+#endif
 
-
+#ifndef AUXMOS
 /datum/gas_reaction/miaster //dry heat sterilization: clears out pathogens in the air
 	priority = -10 //after all the heating from fires etc. is done
 	name = "Dry Heat Sterilization"
@@ -639,7 +663,9 @@ nobiliumsuppression = INFINITY
 
 	//Possibly burning a bit of organic matter through maillard reaction, so a *tiny* bit more heat would be understandable
 	air.temperature += cleaned_air * 0.002
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/halon_formation
 	priority = 12
 	name = "Halon formation"
@@ -671,7 +697,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity + energy_used) / new_heat_capacity), TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/healium_formation
 	priority = 9
 	name = "Healium formation"
@@ -703,7 +731,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity + energy_used) / new_heat_capacity), TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/proto_nitrate_formation
 	priority = 10
 	name = "Proto Nitrate formation"
@@ -735,7 +765,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity + energy_used) / new_heat_capacity), TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/zauker_formation
 	priority = 11
 	name = "Zauker formation"
@@ -767,7 +799,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity - energy_used) / new_heat_capacity), TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/halon_o2removal
 	priority = -1
 	name = "Halon o2 removal"
@@ -798,7 +832,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max(((temperature * old_heat_capacity - energy_used) / new_heat_capacity), TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/zauker_decomp
 	priority = 8
 	name = "Zauker decomposition"
@@ -834,7 +870,9 @@ nobiliumsuppression = INFINITY
 			air.temperature = max((temperature * old_heat_capacity + energy_released) / new_heat_capacity, TCMB)
 		return REACTING
 	return NO_REACTION
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/proto_nitrate_bz_response
 	priority = 13
 	name = "Proto Nitrate bz response"
@@ -874,7 +912,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max((temperature * old_heat_capacity + energy_released) / new_heat_capacity, TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/proto_nitrate_tritium_response
 	priority = 16
 	name = "Proto Nitrate tritium response"
@@ -910,7 +950,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max((temperature * old_heat_capacity + energy_released) / new_heat_capacity, TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/proto_nitrate_hydrogen_response
 	priority = 17
 	name = "Proto Nitrate hydrogen response"
@@ -938,7 +980,9 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max((temperature * old_heat_capacity - energy_released) / new_heat_capacity, TCMB)
 	return REACTING
+#endif
 
+#ifndef AUXMOS
 /datum/gas_reaction/pluox_formation
 	priority = 2
 	name = "Pluoxium formation"
@@ -974,3 +1018,4 @@ nobiliumsuppression = INFINITY
 		if(new_heat_capacity > MINIMUM_HEAT_CAPACITY)
 			air.temperature = max((temperature * old_heat_capacity + energy_released) / new_heat_capacity, TCMB)
 	return REACTING
+#endif

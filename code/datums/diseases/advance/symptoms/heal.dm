@@ -407,17 +407,18 @@
 
 /datum/symptom/heal/plasma/CanHeal(datum/disease/advance/A)
 	var/mob/living/M = A.affected_mob
+#ifndef AUXMOS
 	var/datum/gas_mixture/environment
-	var/list/gases
 
 	. = 0
 
 	if(M.loc)
 		environment = M.loc.return_air()
 	if(environment)
-		gases = environment.gases
+		var/list/gases = environment.return_gases()
 		if(gases[/datum/gas/plasma] && gases[/datum/gas/plasma][MOLES] > gases[/datum/gas/plasma][GAS_META][META_GAS_MOLES_VISIBLE]) //if there's enough plasma in the air to see
 			. += power * 0.5
+#endif
 	if(M.reagents.has_reagent(/datum/reagent/toxin/plasma, needs_metabolizing = TRUE))
 		. +=  power * 0.75
 

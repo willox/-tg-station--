@@ -308,7 +308,7 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 		return
 
 	var/datum/gas_mixture/total = new//Holders to assimilate air from nearby turfs
-	var/list/total_gases = total.gases
+	var/list/total_gases = total.get_gases()
 	//Stolen blatently from self_breakdown
 	var/list/turf_list = atmos_adjacent_turfs + src
 	var/turflen = turf_list.len
@@ -322,17 +322,16 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 		//"borrowing" this code from merge(), I need to play with the temp portion. Lets expand it out
 		//temperature = (giver.temperature * giver_heat_capacity + temperature * self_heat_capacity) / combined_heat_capacity
 		var/capacity = mix.heat_capacity()
-		energy += mix.temperature * capacity
+		energy += mix.return_temperature() * capacity
 		heat_cap += capacity
 
-		var/list/giver_gases = mix.gases
-		for(var/giver_id in giver_gases)
+		for(var/giver_id in mix.get_gases())
 			ASSERT_GAS(giver_id, total)
-			total_gases[giver_id][MOLES] += giver_gases[giver_id][MOLES]
+			total.adjust_moles(giver_id, mix.get_moles(giver_id))
 
-	total.temperature = energy / heat_cap
+	total.set_temperature(energy / heat_cap)
 	for(var/id in total_gases)
-		total_gases[id][MOLES] /= turflen
+		total.set_moles(id, total.get_moles(id) / turflen)
 
 	for(var/t in turf_list)
 		var/turf/open/T = t

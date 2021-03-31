@@ -183,9 +183,9 @@
 ///Check the price of the current tank, if the user doesn't have the money the gas will be merged back into the network
 /obj/machinery/bluespace_vendor/proc/check_price(mob/user)
 	var/temp_price = 0
-	var/list/gases = internal_tank.air_contents.gases
+	var/list/gases = internal_tank.air_contents.get_gases()
 	for(var/gas_id in gases)
-		temp_price += gases[gas_id][MOLES] * connected_machine.base_prices[gas_id]
+		temp_price += internal_tank.air_contents.get_moles(gas_id) * connected_machine.base_prices[gas_id]
 	gas_price = temp_price
 
 	if(attempt_charge(src, user, gas_price) & COMPONENT_OBJ_CANCEL_CHARGE)
@@ -210,17 +210,26 @@
 	var/list/data = list()
 	var/list/bluespace_gasdata = list()
 	if(connected_machine.bluespace_network.total_moles())
-		for(var/gas_id in connected_machine.bluespace_network.gases)
+		for(var/gas_id in connected_machine.bluespace_network.get_gases())
 			bluespace_gasdata.Add(list(list(
+#ifdef AUXMOS
+			"name" = "get name!",
+			"id" = "get id!",
+#else
 			"name" = connected_machine.bluespace_network.gases[gas_id][GAS_META][META_GAS_NAME],
 			"id" = connected_machine.bluespace_network.gases[gas_id][GAS_META][META_GAS_ID],
-			"amount" = round(connected_machine.bluespace_network.gases[gas_id][MOLES], 0.01),
+#endif
+			"amount" = round(connected_machine.bluespace_network.get_moles(gas_id), 0.01),
 			"price" = connected_machine.base_prices[gas_id],
 			)))
 	else
-		for(var/gas_id in connected_machine.bluespace_network.gases)
+		for(var/gas_id in connected_machine.bluespace_network.get_gases())
 			bluespace_gasdata.Add(list(list(
+#ifdef AUXMOS
+				"name" = "get gas name!",
+#else
 				"name" = connected_machine.bluespace_network.gases[gas_id][GAS_META][META_GAS_NAME],
+#endif
 				"id" = "",
 				"amount" = 0,
 				"price" = 0,

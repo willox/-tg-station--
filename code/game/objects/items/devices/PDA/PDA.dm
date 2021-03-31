@@ -411,6 +411,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 				var/turf/T = user.loc
 				if (isnull(T))
 					dat += "Unable to obtain a reading.<br>"
+#ifndef AUXMOS
 				else
 					var/datum/gas_mixture/environment = T.return_air()
 					var/list/env_gases = environment.gases
@@ -427,6 +428,7 @@ GLOBAL_LIST_EMPTY(PDAs)
 								dat += "[env_gases[id][GAS_META][META_GAS_NAME]]: [round(gas_level*100, 0.01)]%<br>"
 
 					dat += "Temperature: [round(environment.temperature-T0C)]&deg;C<br>"
+#endif
 				dat += "<br>"
 			else//Else it links to the cart menu proc. Although, it really uses menu hub 4--menu 4 doesn't really exist as it simply redirects to hub.
 				dat += cartridge.generate_menu()

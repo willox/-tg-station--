@@ -117,11 +117,13 @@
 	var/datum/gas_mixture/environment = loc.return_air()
 
 	var/t = "<span class='notice'>Coordinates: [x],[y] </span>\n"
-	t += "<span class='danger'>Temperature: [environment.temperature] </span>\n"
+	t += "<span class='danger'>Temperature: [environment.return_temperature()] </span>\n"
+#ifndef AUXMOS
 	for(var/id in environment.gases)
 		var/gas = environment.gases[id]
 		if(gas[MOLES])
 			t+="<span class='notice'>[gas[GAS_META][META_GAS_NAME]]: [gas[MOLES]] </span>\n"
+#endif
 
 	to_chat(usr, t)
 

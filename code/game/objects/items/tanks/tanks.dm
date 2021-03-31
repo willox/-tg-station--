@@ -74,7 +74,7 @@
 	. = ..()
 
 	air_contents = new(volume) //liters
-	air_contents.temperature = T20C
+	air_contents.set_temperature(T20C)
 
 	populate_gas()
 
@@ -107,7 +107,7 @@
 
 	. += "<span class='notice'>The pressure gauge reads [round(src.air_contents.return_pressure(),0.01)] kPa.</span>"
 
-	var/celsius_temperature = src.air_contents.temperature-T0C
+	var/celsius_temperature = src.air_contents.return_temperature() - T0C
 	var/descriptive
 
 	if (celsius_temperature < 20)
@@ -238,7 +238,7 @@
 	// (kpa * L * K * mol) / (kpa * L * K)
 	// If we cancel it all out, we get moles, which is the expected unit
 	// This sort of thing comes up often in atmos, keep the tool in mind for other bits of code
-	var/moles_needed = actual_distribute_pressure*volume_to_return/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	var/moles_needed = actual_distribute_pressure*volume_to_return/(R_IDEAL_GAS_EQUATION*air_contents.return_temperature())
 
 	return remove_air(moles_needed)
 
@@ -317,6 +317,7 @@
 
 /obj/item/tank/rad_act(strength)
 	. = ..()
+#ifndef AUXMOS
 	var/gas_change = FALSE
 	var/list/cached_gases = air_contents.gases
 	if(cached_gases[/datum/gas/oxygen] && cached_gases[/datum/gas/carbon_dioxide])
@@ -338,5 +339,6 @@
 
 	if(gas_change)
 		air_contents.garbage_collect()
+#endif
 
 #undef ASSUME_AIR_DT_FACTOR

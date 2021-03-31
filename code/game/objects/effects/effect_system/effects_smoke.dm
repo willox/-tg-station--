@@ -164,15 +164,14 @@
 		if(T.air)
 			var/datum/gas_mixture/G = T.air
 			if(!distcheck || get_dist(T, location) < blast) // Otherwise we'll get silliness like people using Nanofrost to kill people through walls with cold air
-				G.temperature = temperature
+				G.set_temperature(temperature)
 			T.air_update_turf(FALSE, FALSE)
 			for(var/obj/effect/hotspot/H in T)
 				qdel(H)
-			var/list/G_gases = G.gases
-			if(G_gases[/datum/gas/plasma])
+			if(G.has_gas(/datum/gas/plasma))
 				G.assert_gas(/datum/gas/nitrogen)
-				G_gases[/datum/gas/nitrogen][MOLES] += (G_gases[/datum/gas/plasma][MOLES])
-				G_gases[/datum/gas/plasma][MOLES] = 0
+				G.adjust_moles(/datum/gas/nitrogen, G.get_moles(/datum/gas/plasma))
+				G.set_moles(/datum/gas/plasma, 0)
 				G.garbage_collect()
 		if (weldvents)
 			for(var/obj/machinery/atmospherics/components/unary/U in T)
@@ -265,7 +264,7 @@
 	chemholder = new /obj()
 	var/datum/reagents/R = new (500, REAGENT_HOLDER_INSTANT_REACT) //This is a safety for now to prevent smoke generating more smoke as the smoke reagents react in the smoke. This is prevented naturally from happening even if this is off, but I want to be sure that any edge cases are prevented before I get a chance to rework smoke reactions (specifically adding water or reacting away stabilizing agent in the middle of it).
 	chemholder.reagents = R
-	
+
 	R.my_atom = chemholder
 
 /datum/effect_system/smoke_spread/chem/Destroy()

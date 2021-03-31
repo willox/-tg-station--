@@ -598,10 +598,11 @@ GENE SCANNER
 	var/render_list = list()
 	var/datum/gas_mixture/environment = location.return_air()
 	var/pressure = environment.return_pressure()
-	var/total_moles = environment.total_moles()
 
 	render_list += "<span class='info'><B>Results:</B></span>\
 				\n<span class='[abs(pressure - ONE_ATMOSPHERE) < 10 ? "info" : "alert"]'>Pressure: [round(pressure, 0.01)] kPa</span>\n"
+#ifndef AUXMOS
+	var/total_moles = environment.total_moles()
 	if(total_moles)
 		var/list/env_gases = environment.gases
 
@@ -624,6 +625,7 @@ GENE SCANNER
 			var/gas_concentration = env_gases[id][MOLES]/total_moles
 			render_list += "<span class='alert'>[env_gases[id][GAS_META][META_GAS_NAME]]: [round(gas_concentration*100, 0.01)] % ([round(env_gases[id][MOLES], 0.01)] mol)</span>\n"
 		render_list += "<span class='info'>Temperature: [round(environment.temperature-T0C, 0.01)] &deg;C ([round(environment.temperature, 0.01)] K)</span>\n"
+#endif
 	to_chat(user, jointext(render_list, ""), trailing_newline = FALSE) // we handled the last <br> so we don't need handholding
 
 /obj/item/analyzer/AltClick(mob/user) //Barometer output for measuring when the next storm happens
@@ -703,6 +705,8 @@ GENE SCANNER
 	for(var/g in airs)
 		if(airs.len > 1) //not a unary gas mixture
 			render_list += "<span class='boldnotice'>Node [airs.Find(g)]</span>"
+
+#ifndef AUXMOS
 		var/datum/gas_mixture/air_contents = g
 
 		var/total_moles = air_contents.total_moles()
@@ -727,6 +731,7 @@ GENE SCANNER
 		if(cached_scan_results && cached_scan_results["fusion"]) //notify the user if a fusion reaction was detected
 			render_list += "<span class='boldnotice'>Large amounts of free neutrons detected in the air indicate that a fusion reaction took place.</span>\
 						\n<span class='notice'>Instability of the last fusion reaction: [round(cached_scan_results["fusion"], 0.01)].</span>"
+#endif
 
 	to_chat(user, jointext(render_list, "\n")) // we let the join apply newlines so we do need handholding
 	return TRUE

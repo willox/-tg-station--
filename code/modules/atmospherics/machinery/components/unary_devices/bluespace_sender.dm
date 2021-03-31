@@ -66,7 +66,7 @@
 	var/datum/gas_mixture/content = airs[1]
 	var/datum/gas_mixture/remove = content.remove_ratio(gas_transfer_rate)
 	bluespace_network.merge(remove)
-	bluespace_network.temperature = T20C
+	bluespace_network.set_temperature(T20C)
 	update_parents()
 
 /obj/machinery/atmospherics/components/unary/bluespace_sender/attackby(obj/item/item, mob/user, params)
@@ -122,17 +122,26 @@
 	data["gas_transfer_rate"] = gas_transfer_rate
 	var/list/bluespace_gasdata = list()
 	if(bluespace_network.total_moles())
-		for(var/gas_id in bluespace_network.gases)
+		for(var/gas_id in bluespace_network.get_gases())
 			bluespace_gasdata.Add(list(list(
+#ifdef AUXMOS
+			"name" = "get gas name",
+			"id" = "get gas id",
+#else
 			"name" = bluespace_network.gases[gas_id][GAS_META][META_GAS_NAME],
 			"id" = bluespace_network.gases[gas_id][GAS_META][META_GAS_ID],
-			"amount" = round(bluespace_network.gases[gas_id][MOLES], 0.01),
+#endif
+			"amount" = round(bluespace_network.get_moles(gas_id), 0.01),
 			"price" = base_prices[gas_id],
 			)))
 	else
-		for(var/gas_id in bluespace_network.gases)
+		for(var/gas_id in bluespace_network.get_gases())
 			bluespace_gasdata.Add(list(list(
+#ifdef AUXMOS
+				"name" = "get gas name",
+#else
 				"name" = bluespace_network.gases[gas_id][GAS_META][META_GAS_NAME],
+#endif
 				"id" = "",
 				"amount" = 0,
 				"price" = 0,
