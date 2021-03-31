@@ -184,11 +184,13 @@ GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
 
 /datum/gas_mixture/proc/remove(amount)
 	var/datum/gas_mixture/removed = new type
+	removed.set_temperature(return_temperature())
 	__remove(removed, amount)
 	return removed
 
 /datum/gas_mixture/proc/remove_ratio(ratio)
 	var/datum/gas_mixture/removed = new type
+	removed.set_temperature(return_temperature())
 	__remove_ratio(removed, ratio)
 	return removed
 

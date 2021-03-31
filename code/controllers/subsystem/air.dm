@@ -350,7 +350,7 @@ SUBSYSTEM_DEF(air)
 
 #ifdef AUXMOS
 /datum/controller/subsystem/air/proc/process_excited_groups(resumed = FALSE)
-	CRASH("process_excited_groups NYI")
+	return
 #else
 /datum/controller/subsystem/air/proc/process_excited_groups(resumed = FALSE)
 	if (!resumed)

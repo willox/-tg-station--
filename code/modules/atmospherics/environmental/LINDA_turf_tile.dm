@@ -264,7 +264,7 @@
 
 #ifdef AUXMOS
 /turf/open/process_cell(fire_count)
-	CRASH("process_cell should not be reachable in auxmos")
+	return
 #else
 /turf/open/process_cell(fire_count)
 	if(archived_cycle < fire_count) //archive self if not already done

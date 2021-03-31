@@ -246,6 +246,34 @@
 		stack_trace("[src] has one or more null gas mixtures, which may cause bugs. Null mixtures will not be considered in reconcile_air().")
 		return removeNullsFromList(.)
 
+#ifdef AUXMOS
+// TODO: Why does the non auxmos code not work with auxmos? The original code just increased numbers into the billions
+/datum/pipeline/proc/get_all_connected_airs()
+	var/list/datum/gas_mixture/gas_mixture_list = list()
+	var/list/datum/pipeline/pipeline_list = list()
+	pipeline_list += src
+
+	for(var/i = 1; i <= pipeline_list.len; i++) //can't do a for-each here because we may add to the list within the loop
+		var/datum/pipeline/pipeline = pipeline_list[i]
+		if(!pipeline)
+			continue
+		gas_mixture_list += pipeline.other_airs
+		gas_mixture_list += pipeline.air
+		for(var/atmosmch in pipeline.other_atmosmch)
+			if (istype(atmosmch, /obj/machinery/atmospherics/components/binary/valve))
+				var/obj/machinery/atmospherics/components/binary/valve/considered_valve = atmosmch
+				if(considered_valve.on)
+					pipeline_list |= considered_valve.parents[1]
+					pipeline_list |= considered_valve.parents[2]
+			else if (istype(atmosmch, /obj/machinery/atmospherics/components/unary/portables_connector))
+				var/obj/machinery/atmospherics/components/unary/portables_connector/considered_connector = atmosmch
+				if(considered_connector.connected_device)
+					gas_mixture_list += considered_connector.connected_device.air_contents
+	return gas_mixture_list
+
+/datum/pipeline/proc/reconcile_air()
+	equalize_all_gases_in_list(get_all_connected_airs())
+#else
 /datum/pipeline/proc/reconcile_air()
 	var/list/datum/gas_mixture/gas_mixture_list = list()
 	var/list/datum/pipeline/pipeline_list = list()
@@ -279,10 +307,10 @@
 		// This is sort of a combined merge + heat_capacity calculation
 
 		//gas transfer
-		for(var/datum/gas/giver_id as anything in gas_mixture.get_gases())
-			ASSERT_GAS(giver_id, total_gas_mixture)
-			total_gas_mixture.adjust_moles(giver_id, gas_mixture.get_moles(giver_id))
-			total_heat_capacity += gas_mixture.get_moles(giver_id) * initial(giver_id.specific_heat)
+		for(var/datum/gas/gas_id as anything in gas_mixture.get_gases())
+			ASSERT_GAS(gas_id, total_gas_mixture)
+			total_gas_mixture.adjust_moles(giver_id, gas_mixture.get_moles(gas_id))
+			total_heat_capacity += gas_mixture.get_moles(gas_id) * initial(gas_id.specific_heat)
 
 		total_thermal_energy += THERMAL_ENERGY(gas_mixture)
 
@@ -295,3 +323,4 @@
 		for(var/mixture in gas_mixture_list)
 			var/datum/gas_mixture/gas_mixture = mixture
 			gas_mixture.copy_from(total_gas_mixture, gas_mixture.return_volume() / total_gas_mixture.return_volume())
+#endif
