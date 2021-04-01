@@ -72,7 +72,7 @@ GLOBAL_LIST_INIT(gaslist_cache, init_gaslist_cache())
 GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
 
 /proc/try_auxtools_atmos_init()
-	var/res = call("E:\\auxmos\\target\\i686-pc-windows-msvc\\debug\\auxmos.dll", "auxtools_init")()
+	var/res = call("auxmos.dll", "auxtools_init")()
 	if (!findtext(res, "SUCCESS"))
 		world.log << "Fucked up [res]"
 		//del world
