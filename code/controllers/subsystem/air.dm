@@ -20,8 +20,10 @@ SUBSYSTEM_DEF(air)
 	var/cost_atmos_machinery = 0
 	var/cost_rebuilds = 0
 
+#ifndef AUXMOS
 	var/list/excited_groups = list()
 	var/list/active_turfs = list()
+#endif
 	var/list/hotspots = list()
 	var/list/networks = list()
 	var/list/rebuild_queue = list()
@@ -116,9 +118,13 @@ SUBSYSTEM_DEF(air)
 	msg += "AO:[round(cost_atoms, 1)]|"
 	msg += "RB:[round(cost_rebuilds,1)]|"
 	msg += "} "
+#ifndef AUXMOS
 	msg += "AT:[active_turfs.len]|"
+#endif
 	msg += "HS:[hotspots.len]|"
+#ifndef AUXMOS
 	msg += "EG:[excited_groups.len]|"
+#endif
 	msg += "HP:[high_pressure_delta.len]|"
 	msg += "SC:[active_super_conductivity.len]|"
 	msg += "PN:[networks.len]|"
@@ -126,7 +132,9 @@ SUBSYSTEM_DEF(air)
 	msg += "AO:[atom_process.len]|"
 	msg += "RB:[rebuild_queue.len]|"
 	msg += "EP:[expansion_queue.len]|"
+#ifndef AUXMOS
 	msg += "AT/MS:[round((cost ? active_turfs.len/cost : 0),0.1)]"
+#endif
 	return ..()
 
 
@@ -553,6 +561,10 @@ SUBSYSTEM_DEF(air)
 		if (MC_TICK_CHECK)
 			return
 
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/remove_from_active(turf/open/T)
+	return
+#else
 ///Removes a turf from processing, and causes its excited group to clean up so things properly adapt to the change
 /datum/controller/subsystem/air/proc/remove_from_active(turf/open/T)
 	active_turfs -= T
@@ -567,7 +579,9 @@ SUBSYSTEM_DEF(air)
 			//If this fires during active turfs it'll cause a slight removal of active turfs, as they breakdown if they have no excited group
 			//The group also expands by a tile per rebuild on each edge, suffering
 			T.excited_group.garbage_collect() //Kill the excited group, it'll reform on its own later
+#endif
 
+#ifndef AUXMOS
 ///Puts an active turf to sleep so it doesn't process. Do this without cleaning up its excited group.
 /datum/controller/subsystem/air/proc/sleep_active_turf(turf/open/T)
 	active_turfs -= T
@@ -578,7 +592,12 @@ SUBSYSTEM_DEF(air)
 	#endif
 	if(istype(T))
 		T.excited = FALSE
+#endif
 
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/add_to_active(turf/open/T, blockchanges = FALSE)
+	return
+#else
 ///Adds a turf to active processing, handles duplicates. Call this with blockchanges == TRUE if you want to nuke the assoc excited group
 /datum/controller/subsystem/air/proc/add_to_active(turf/open/T, blockchanges = FALSE)
 	if(istype(T) && T.air)
@@ -603,6 +622,7 @@ SUBSYSTEM_DEF(air)
 		return
 	else
 		T.requires_activation = TRUE
+#endif
 
 /datum/controller/subsystem/air/StartLoadingMap()
 	LAZYINITLIST(queued_for_activation)
@@ -616,8 +636,10 @@ SUBSYSTEM_DEF(air)
 
 /datum/controller/subsystem/air/proc/setup_allturfs()
 	var/list/turfs_to_init = block(locate(1, 1, 1), locate(world.maxx, world.maxy, world.maxz))
-	var/list/active_turfs = src.active_turfs
 	var/times_fired = ++src.times_fired
+
+#ifndef AUXMOS
+	var/list/active_turfs = src.active_turfs
 
 	// Clear active turfs - faster than removing every single turf in the world
 	// one-by-one, and Initalize_Atmos only ever adds `src` back in.
@@ -627,6 +649,7 @@ SUBSYSTEM_DEF(air)
 		active.remove_atom_colour(TEMPORARY_COLOUR_PRIORITY, COLOR_VIBRANT_LIME)
 	#endif
 	active_turfs.Cut()
+#endif
 
 	for(var/thing in turfs_to_init)
 		var/turf/T = thing
@@ -635,6 +658,7 @@ SUBSYSTEM_DEF(air)
 		T.Initalize_Atmos(times_fired)
 		CHECK_TICK
 
+#ifndef AUXMOS
 	if(active_turfs.len)
 		var/starting_ats = active_turfs.len
 		sleep(world.tick_lag)
@@ -665,6 +689,7 @@ SUBSYSTEM_DEF(air)
 		var/msg = "HEY! LISTEN! [DisplayTimeText(world.timeofday - timer)] were wasted processing [starting_ats] turf(s) (connected to [ending_ats - starting_ats] other turfs) with atmos differences at round start."
 		to_chat(world, "<span class='boldannounce'>[msg]</span>")
 		warning(msg)
+#endif
 
 /turf/open/proc/resolve_active_graph()
 	. = list()
@@ -803,6 +828,7 @@ GLOBAL_LIST_EMPTY(colored_images)
 /datum/controller/subsystem/air/ui_data(mob/user)
 	var/list/data = list()
 	data["excited_groups"] = list()
+#ifndef AUXMOS
 	for(var/datum/excited_group/group in excited_groups)
 		var/turf/T = group.turf_list[1]
 		var/area/target = get_area(T)
@@ -823,8 +849,11 @@ GLOBAL_LIST_EMPTY(colored_images)
 			"max_share" = max
 		))
 	data["active_size"] = active_turfs.len
+#endif
 	data["hotspots_size"] = hotspots.len
+#ifndef AUXMOS
 	data["excited_size"] = excited_groups.len
+#endif
 	data["conducting_size"] = active_super_conductivity.len
 	data["frozen"] = can_fire
 	data["show_all"] = display_all_groups
@@ -866,11 +895,13 @@ GLOBAL_LIST_EMPTY(colored_images)
 			return TRUE
 		if("toggle_show_all")
 			display_all_groups = !display_all_groups
+#ifndef AUXMOS
 			for(var/datum/excited_group/group in excited_groups)
 				if(display_all_groups)
 					group.display_turfs()
 				else if(!group.should_display) //Don't flicker yeah?
 					group.hide_turfs()
+#endif
 			return TRUE
 		if("toggle_user_display")
 			var/atom/movable/screen/plane_master/plane = ui.user.hud_used.plane_masters["[ATMOS_GROUP_PLANE]"]

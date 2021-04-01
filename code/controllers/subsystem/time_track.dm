@@ -83,8 +83,13 @@ SUBSYSTEM_DEF(time_track)
 			SSair.cost_superconductivity,
 			SSair.cost_pipenets,
 			SSair.cost_rebuilds,
+#ifdef AUXMOS
+			0,
+			0,
+#else
 			length(SSair.active_turfs),
 			length(SSair.excited_groups),
+#endif
 			length(SSair.hotspots),
 			length(SSair.networks),
 			length(SSair.high_pressure_delta),

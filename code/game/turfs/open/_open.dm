@@ -166,7 +166,9 @@
 		if(!excited && air.compare(enemy_air))
 			//testing("Active turf found. Return value of compare(): [is_active]")
 			excited = TRUE
+#ifndef AUXMOS
 			SSair.active_turfs += src
+#endif
 
 /turf/open/proc/GetHeatCapacity()
 	. = air.heat_capacity()

@@ -439,7 +439,11 @@
 	var/static/wrapping_id = 0
 
 /datum/excited_group/New()
+#ifdef AUXMOS
+	// TODO: Remove completely
+#else
 	SSair.excited_groups += src
+#endif
 
 /datum/excited_group/proc/add_turf(turf/open/T)
 	turf_list += T
@@ -449,6 +453,9 @@
 		display_turf(T)
 
 /datum/excited_group/proc/merge_groups(datum/excited_group/E)
+#ifdef AUXMOS
+	// TODO: Remove completely
+#else
 	if(turf_list.len > E.turf_list.len)
 		SSair.excited_groups -= E
 		for(var/t in E.turf_list)
@@ -473,6 +480,7 @@
 			E.display_turfs()
 		E.breakdown_cooldown = min(breakdown_cooldown, E.breakdown_cooldown)
 		E.dismantle_cooldown = 0
+#endif
 
 /datum/excited_group/proc/reset_cooldowns()
 	breakdown_cooldown = 0
@@ -540,7 +548,11 @@
 		var/turf/open/T = t
 		T.excited = FALSE
 		T.significant_share_ticker = 0
+#ifdef AUXMOS
+		// TODO: Remove completely
+#else
 		SSair.active_turfs -= T
+#endif
 		#ifdef VISUALIZE_ACTIVE_TURFS //Use this when you want details about how the turfs are moving, display_all_groups should work for normal operation
 		T.remove_atom_colour(TEMPORARY_COLOUR_PRIORITY, COLOR_VIBRANT_LIME)
 		#endif
@@ -554,7 +566,11 @@
 		var/turf/open/T = t
 		T.excited_group = null
 	turf_list.Cut()
+#ifdef AUXMOS
+		// TODO: Remove completely
+#else
 	SSair.excited_groups -= src
+#endif
 	if(SSair.currentpart == SSAIR_EXCITEDGROUPS)
 		SSair.currentrun -= src
 
