@@ -27,12 +27,12 @@
 		if(islava(T))
 			environment_temperature = 5000 //Yuck
 		else if(T.blocks_air)
-			environment_temperature = T.temperature
+			environment_temperature = T.return_temperature()
 		else
 			var/turf/open/OT = T
 			environment_temperature = OT.GetTemperature()
 	else
-		environment_temperature = T.temperature
+		environment_temperature = T.return_temperature()
 	if(abs(environment_temperature-pipe_air.return_temperature()) > minimum_temperature_difference)
 		parent.temperature_interact(T, volume, thermal_conductivity)
 

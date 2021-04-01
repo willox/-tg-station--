@@ -34,6 +34,10 @@
 			if(O.BlockSuperconductivity()) //the direction and open/closed are already checked on CanAtmosPass() so there are no arguments
 				atmos_supeconductivity |= dir
 				T.atmos_supeconductivity |= opp
+#ifdef AUXMOS
+				conductivity_blocked_directions |= dir
+				T.conductivity_blocked_directions |= opp
+#endif
 				return FALSE //no need to keep going, we got all we asked
 
 	atmos_supeconductivity &= ~dir
@@ -54,16 +58,31 @@
 		if(!(blocks_air || T.blocks_air) && ((direction & (UP|DOWN))? (canvpass && CANVERTICALATMOSPASS(T, src)) : (canpass && CANATMOSPASS(T, src))) )
 			LAZYINITLIST(atmos_adjacent_turfs)
 			LAZYINITLIST(T.atmos_adjacent_turfs)
+#ifdef AUXMOS
+			atmos_adjacent_turfs[T] = direction
+			T.atmos_adjacent_turfs[src] = REVERSE_DIR(direction)
+#else
 			atmos_adjacent_turfs[T] = TRUE
 			T.atmos_adjacent_turfs[src] = TRUE
+#endif
 		else
 			if (atmos_adjacent_turfs)
 				atmos_adjacent_turfs -= T
 			if (T.atmos_adjacent_turfs)
 				T.atmos_adjacent_turfs -= src
 			UNSETEMPTY(T.atmos_adjacent_turfs)
+#ifdef AUXMOS
+			T.set_sleeping(!length(T.atmos_adjacent_turfs))
+		// T.__update_auxtools_turf_adjacency_info(isspaceturf(T.get_z_base_turf()), -1)
+		T.__update_auxtools_turf_adjacency_info(FALSE, -1)
+#endif
 	UNSETEMPTY(atmos_adjacent_turfs)
 	src.atmos_adjacent_turfs = atmos_adjacent_turfs
+#ifdef AUXMOS
+	set_sleeping(!length(atmos_adjacent_turfs))
+	// __update_auxtools_turf_adjacency_info(isspaceturf(get_z_base_turf()))
+	__update_auxtools_turf_adjacency_info(FALSE)
+#endif
 
 //returns a list of adjacent turfs that can share air with this one.
 //alldir includes adjacent diagonal tiles that can share

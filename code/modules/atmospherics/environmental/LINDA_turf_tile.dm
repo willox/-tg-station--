@@ -9,6 +9,11 @@
 	///bitfield of dirs in which we are superconducitng
 	var/atmos_supeconductivity = NONE
 
+#ifdef AUXMOS
+	//bitfield of dirs in which we thermal conductivity is blocked
+	var/conductivity_blocked_directions = NONE
+#endif
+
 	//used to determine whether we should archive
 	var/archived_cycle = 0
 	var/current_cycle = 0
@@ -39,6 +44,9 @@
 
 // AUXMOS stubs! TODO: Move, etc.
 #ifdef AUXMOS
+/turf/proc/set_temperature()
+	CRASH("auxtools proc not overriden")
+
 /turf/return_temperature()
 	CRASH("auxtools proc not overriden")
 
@@ -53,16 +61,24 @@
 
 /turf/proc/__update_auxtools_turf_adjacency_info()
 	CRASH("auxtools proc not overriden")
+#else
+/turf
+	var/_temperature
 
-/turf/proc/set_temperature()
-	CRASH("auxtools proc not overriden")
+/turf/proc/set_temperature(temperature)
+	_temperature = temperature
 
+/turf/return_temperature()
+	return _temperature
 #endif
 
 /turf/open/Initialize()
 	if(!blocks_air)
 		air = new
 		air.copy_from_turf(src)
+#ifdef AUXMOS
+		update_air_ref(planetary_atmos ? 1 : 2)
+#endif
 		if(planetary_atmos)
 			if(!SSair.planetary[initial_gas_mix])
 				var/datum/gas_mixture/immutable/planetary/mix = new
@@ -82,12 +98,24 @@
 
 /////////////////GAS MIXTURE PROCS///////////////////
 
+#ifdef AUXMOS
+/turf/open/assume_air(datum/gas_mixture/giver) //use this for machines to adjust air
+	if(!giver)
+		return FALSE
+	if(SSair.thread_running())
+		SSair.deferred_airs += list(list(src, giver))
+	else
+		air.merge(giver)
+	update_visuals()
+	return TRUE
+#else
 /turf/open/assume_air(datum/gas_mixture/giver) //use this for machines to adjust air
 	if(!giver)
 		return FALSE
 	air.merge(giver)
 	update_visuals()
 	return TRUE
+#endif
 
 /turf/open/remove_air(amount)
 	var/datum/gas_mixture/ours = return_air()
@@ -151,13 +179,16 @@
 	SEND_SIGNAL(src, COMSIG_TURF_EXPOSE, air, exposed_temperature)
 	check_atmos_process(null, air, exposed_temperature) //Manually do this to avoid needing to use elements, don't want 200 second atom init times
 
+#ifdef AUXMOS
+// Remove?
+#endif
 /turf/proc/archive()
-	temperature_archived = temperature
+	temperature_archived = return_temperature()
 
 /turf/open/archive()
 	air.archive()
 	archived_cycle = SSair.times_fired
-	temperature_archived = temperature
+	temperature_archived = return_temperature()
 
 /////////////////////////GAS OVERLAYS//////////////////////////////
 
@@ -252,13 +283,14 @@
 	}
 #endif
 
+#ifdef AUXMOS
+// TODO
+/turf/proc/process_cell(fire_count)
+	return
+#else
 /turf/proc/process_cell(fire_count)
 	SSair.remove_from_active(src)
 
-#ifdef AUXMOS
-/turf/open/process_cell(fire_count)
-	return
-#else
 /turf/open/process_cell(fire_count)
 	if(archived_cycle < fire_count) //archive self if not already done
 		archive()
@@ -447,8 +479,9 @@
 	dismantle_cooldown = 0
 
 #ifdef AUXMOS
-/datum/excited_group/proc/self_breakdown(roundstart = FALSE, poke_turfs = FALSE)
-	CRASH("self_breakdown")
+// TODO
+/datum/excited_group/proc/self_breakdown(roundstart)
+	return
 #else
 /datum/excited_group/proc/self_breakdown(roundstart = FALSE, poke_turfs = FALSE)
 	var/datum/gas_mixture/A = new
@@ -582,7 +615,7 @@ Then we space some of our heat, and think about if we should stop conducting.
 		other.temperature_share_open_to_solid(src)
 	else //Both tiles are solid
 		other.share_temperature_mutual_solid(src, thermal_conductivity)
-	temperature_expose(null, temperature)
+	temperature_expose(null, return_temperature())
 
 /turf/open/neighbor_conduct_with_src(turf/other)
 	if(blocks_air)
@@ -619,7 +652,9 @@ Then we space some of our heat, and think about if we should stop conducting.
 
 	finish_superconduction()
 
-/turf/proc/finish_superconduction(temp = temperature)
+/turf/proc/finish_superconduction(temp)
+	if (isnull(temp))
+		temp = return_temperature()
 	//Make sure still hot enough to continue conducting heat
 	if(temp < MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION)
 		SSair.active_super_conductivity -= src
@@ -628,8 +663,8 @@ Then we space some of our heat, and think about if we should stop conducting.
 /turf/open/finish_superconduction()
 	//Conduct with air on my tile if I have it
 	if(!blocks_air)
-		temperature = air.temperature_share(null, thermal_conductivity, temperature, heat_capacity)
-	..((blocks_air ? temperature : air.return_temperature()))
+		set_temperature(air.temperature_share(null, thermal_conductivity, return_temperature(), heat_capacity))
+	..((blocks_air ? return_temperature() : air.return_temperature()))
 
 ///Should we attempt to superconduct?
 /turf/proc/consider_superconductivity(starting)
@@ -647,21 +682,21 @@ Then we space some of our heat, and think about if we should stop conducting.
 	return ..()
 
 /turf/closed/consider_superconductivity(starting)
-	if(temperature < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION))
+	if(return_temperature() < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION))
 		return FALSE
 	return ..()
 
 /turf/proc/radiate_to_spess() //Radiate excess tile heat to space
-	if(temperature > T0C) //Considering 0 degC as te break even point for radiation in and out
+	if(return_temperature() > T0C) //Considering 0 degC as te break even point for radiation in and out
 		var/delta_temperature = (temperature_archived - TCMB) //hardcoded space temperature
 		if((heat_capacity > 0) && (abs(delta_temperature) > MINIMUM_TEMPERATURE_DELTA_TO_CONSIDER))
 
 			var/heat = thermal_conductivity*delta_temperature* \
 				(heat_capacity*HEAT_CAPACITY_VACUUM/(heat_capacity+HEAT_CAPACITY_VACUUM))
-			temperature -= heat/heat_capacity
+			set_temperature(return_temperature() - heat/heat_capacity)
 
 /turf/open/proc/temperature_share_open_to_solid(turf/sharer)
-	sharer.temperature = air.temperature_share(null, sharer.thermal_conductivity, sharer.temperature, sharer.heat_capacity)
+	sharer.set_temperature(air.temperature_share(null, sharer.thermal_conductivity, sharer.return_temperature(), sharer.heat_capacity))
 
 /turf/proc/share_temperature_mutual_solid(turf/sharer, conduction_coefficient) //This is all just heat sharing, don't get freaked out
 	var/delta_temperature = (temperature_archived - sharer.temperature_archived)
@@ -670,5 +705,5 @@ Then we space some of our heat, and think about if we should stop conducting.
 		var/heat = conduction_coefficient*delta_temperature* \
 			(heat_capacity*sharer.heat_capacity/(heat_capacity+sharer.heat_capacity)) //The larger the combined capacity the less is shared
 
-		temperature -= heat/heat_capacity //The higher your own heat cap the less heat you get from this arrangement
-		sharer.temperature += heat/sharer.heat_capacity
+		set_temperature(return_temperature() - heat/heat_capacity) //The higher your own heat cap the less heat you get from this arrangement
+		sharer.set_temperature(sharer.return_temperature() + heat/sharer.heat_capacity)

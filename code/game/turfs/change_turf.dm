@@ -141,6 +141,9 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 		. = ..() //If path == type this will return us, don't bank on making a new type
 		if (!.) // changeturf failed or didn't do anything
 			QDEL_NULL(stashed_air)
+#ifdef AUXMOS
+			update_air_ref(planetary_atmos ? 1 : 2)
+#endif
 			return
 		var/turf/open/newTurf = .
 		newTurf.air.copy_from(stashed_air)
@@ -158,6 +161,9 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 		SSair.remove_from_active(src) //Clean up wall excitement, and refresh excited groups
 		if(ispath(path,/turf/closed))
 			flags |= CHANGETURF_RECALC_ADJACENT
+#ifdef AUXMOS
+			update_air_ref(-1)
+#endif
 		return ..()
 
 /// Take off the top layer turf and replace it with the next baseturf down

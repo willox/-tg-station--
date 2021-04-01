@@ -16,7 +16,7 @@ GLOBAL_LIST_EMPTY(station_turfs)
 	// This shouldn't be modified directly, use the helper procs.
 	var/list/baseturfs = /turf/baseturf_bottom
 
-	var/temperature = T20C
+	var/initial_temperature = T20C
 	var/to_be_destroyed = 0 //Used for fire, if a melting temperature was reached, it will be destroyed
 	var/max_fire_temperature_sustained = 0 //The max temperature of the fire which it was subjected to
 
@@ -124,6 +124,17 @@ GLOBAL_LIST_EMPTY(station_turfs)
 	set_custom_materials(custom_materials)
 
 	ComponentInitialize()
+
+#ifdef AUXMOS
+	if(isopenturf(src))
+		// var/turf/open/O = src
+		// __auxtools_update_turf_temp_info(isspaceturf(get_z_base_turf()) && !O.planetary_atmos)
+		__auxtools_update_turf_temp_info(FALSE)
+	else
+		update_air_ref(-1)
+		//__auxtools_update_turf_temp_info(isspaceturf(get_z_base_turf()))
+		__auxtools_update_turf_temp_info(FALSE)
+#endif
 
 	return INITIALIZE_HINT_NORMAL
 

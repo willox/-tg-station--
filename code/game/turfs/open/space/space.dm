@@ -4,7 +4,7 @@
 	name = "\proper space"
 	intact = 0
 
-	temperature = TCMB
+	initial_temperature = TCMB
 	thermal_conductivity = OPEN_HEAT_TRANSFER_COEFFICIENT
 	heat_capacity = 700000
 
@@ -33,6 +33,9 @@
 	SHOULD_CALL_PARENT(FALSE)
 	icon_state = SPACE_ICON_STATE
 	air = space_gas
+#ifdef AUXMOS
+	update_air_ref(0)
+#endif
 	vis_contents.Cut() //removes inherited overlays
 	visibilityChanged()
 

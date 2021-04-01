@@ -11,6 +11,8 @@ SUBSYSTEM_DEF(air)
 	var/cost_atoms = 0
 	var/cost_turfs = 0
 	var/cost_hotspots = 0
+	var/cost_deferred_airs = 0
+	var/cost_post_process = 0
 	var/cost_groups = 0
 	var/cost_highpressure = 0
 	var/cost_superconductivity = 0
@@ -47,8 +49,22 @@ SUBSYSTEM_DEF(air)
 	var/list/queued_for_activation
 	var/display_all_groups = FALSE
 
+#ifdef AUXMOS
+	var/list/deferred_airs = list()
+
+	// Max number of turfs equalization will grab.
+	var/equalize_turf_limit = 25
+	// Max number of turfs to look for a space turf, and max number of turfs that will be decompressed.
+	var/equalize_hard_turf_limit = 2000
+
+	var/share_max_steps = 1
+	// If process_turfs finds no pressure differentials larger than this, it'll stop for that tick.
+	var/share_pressure_diff_to_stop = 101.325
+#endif
+
 // AUXMOS stubs! TODO: Move, etc.
 #ifdef AUXMOS
+// RENAME THIS ONE
 /datum/controller/subsystem/air/proc/auxtools_update_reactions()
 	CRASH("auxmos proc not overriden")
 
@@ -90,6 +106,8 @@ SUBSYSTEM_DEF(air)
 	msg += "C:{"
 	msg += "AT:[round(cost_turfs,1)]|"
 	msg += "HS:[round(cost_hotspots,1)]|"
+	msg += "DA:[round(cost_deferred_airs,1)]|"
+	msg += "PP:[round(cost_post_process,1)]|"
 	msg += "EG:[round(cost_groups,1)]|"
 	msg += "HP:[round(cost_highpressure,1)]|"
 	msg += "SC:[round(cost_superconductivity,1)]|"
@@ -115,6 +133,9 @@ SUBSYSTEM_DEF(air)
 /datum/controller/subsystem/air/Initialize(timeofday)
 	map_loading = FALSE
 	gas_reactions = init_gas_reactions()
+#ifdef AUXMOS
+	auxtools_update_reactions()
+#endif
 	setup_allturfs()
 	setup_atmos_machinery()
 	setup_pipenets()
@@ -160,8 +181,13 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_atmos_machinery = MC_AVERAGE(cost_atmos_machinery, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
+#ifdef AUXMOS
+		currentpart = SSAIR_HOTSPOTS
+#else
 		currentpart = SSAIR_ACTIVETURFS
+#endif
 
+#ifndef AUXMOS
 	if(currentpart == SSAIR_ACTIVETURFS)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -173,6 +199,7 @@ SUBSYSTEM_DEF(air)
 		cost_turfs = MC_AVERAGE(cost_turfs, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
 		currentpart = SSAIR_HOTSPOTS
+#endif
 
 	if(currentpart == SSAIR_HOTSPOTS) //We do this before excited groups to allow breakdowns to be independent of adding turfs while still *mostly preventing mass fires
 		timer = TICK_USAGE_REAL
@@ -184,20 +211,16 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_hotspots = MC_AVERAGE(cost_hotspots, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
-		currentpart = SSAIR_EXCITEDGROUPS
-
-	if(currentpart == SSAIR_EXCITEDGROUPS)
-		timer = TICK_USAGE_REAL
-		if(!resumed)
-			cached_cost = 0
-		process_excited_groups(resumed)
-		cached_cost += TICK_USAGE_REAL - timer
+		currentpart = SSAIR_FINALIZE_TURFS
+	// This literally just waits for the turf processing thread to finish, doesn't do anything else.
+	// this is necessary cause the next step after this interacts with the air--we get consistency
+	// issues if we don't wait for it, disappearing gases etc.
+	if(currentpart == SSAIR_FINALIZE_TURFS)
+		finish_turf_processing(resumed)
 		if(state != SS_RUNNING)
 			return
-		cost_groups = MC_AVERAGE(cost_groups, TICK_DELTA_TO_MS(cached_cost))
-		resumed = FALSE
+		resumed = 0
 		currentpart = SSAIR_HIGHPRESSURE
-
 	if(currentpart == SSAIR_HIGHPRESSURE)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -208,8 +231,15 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_highpressure = MC_AVERAGE(cost_highpressure, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
+		currentpart = SSAIR_DEFERRED_AIRS
+	if(currentpart == SSAIR_DEFERRED_AIRS)
+		timer = TICK_USAGE_REAL
+		process_deferred_airs(resumed)
+		cost_deferred_airs = MC_AVERAGE(cost_deferred_airs, TICK_DELTA_TO_MS(TICK_USAGE_REAL - timer))
+		if(state != SS_RUNNING)
+			return
+		resumed = 0
 		currentpart = SSAIR_SUPERCONDUCTIVITY
-
 	if(currentpart == SSAIR_SUPERCONDUCTIVITY)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -232,6 +262,44 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_atoms = MC_AVERAGE(cost_atoms, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
+		currentpart = SSAIR_EXCITEDGROUPS
+
+	if(currentpart == SSAIR_EXCITEDGROUPS)
+		timer = TICK_USAGE_REAL
+		if(!resumed)
+			cached_cost = 0
+		process_excited_groups(resumed)
+		cached_cost += TICK_USAGE_REAL - timer
+		if(state != SS_RUNNING)
+			return
+		cost_groups = MC_AVERAGE(cost_groups, TICK_DELTA_TO_MS(cached_cost))
+		resumed = FALSE
+		currentpart = SSAIR_TURF_POST_PROCESS
+
+	// Quick multithreaded "should we display/react?" checks followed by finishing those up before the next step
+	if(currentpart == SSAIR_TURF_POST_PROCESS)
+		timer = TICK_USAGE_REAL
+		post_process_turfs(resumed)
+		cost_post_process = MC_AVERAGE(cost_post_process, TICK_DELTA_TO_MS(TICK_USAGE_REAL - timer))
+		if(state != SS_RUNNING)
+			return
+		resumed = 0
+#ifdef AUXMOS
+		currentpart = SSAIR_ACTIVETURFS
+#endif
+
+#ifdef AUXMOS
+	if(currentpart == SSAIR_ACTIVETURFS)
+		timer = TICK_USAGE_REAL
+		if(!resumed)
+			cached_cost = 0
+		process_active_turfs(resumed)
+		cached_cost += TICK_USAGE_REAL - timer
+		if(state != SS_RUNNING)
+			return
+		cost_turfs = MC_AVERAGE(cost_turfs, TICK_DELTA_TO_MS(cached_cost))
+		resumed = FALSE
+#endif
 
 	currentpart = SSAIR_PIPENETS
 	SStgui.update_uis(SSair) //Lightning fast debugging motherfucker
@@ -283,6 +351,9 @@ SUBSYSTEM_DEF(air)
 		if(MC_TICK_CHECK)
 			return
 
+#ifdef AUXMOS
+	// TODO: eck
+#endif
 /datum/controller/subsystem/air/proc/process_atmos_machinery(resumed = FALSE)
 	if (!resumed)
 		src.currentrun = atmos_machinery.Copy()
@@ -324,6 +395,33 @@ SUBSYSTEM_DEF(air)
 		if(MC_TICK_CHECK)
 			return
 
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/finish_turf_processing(resumed = 0)
+	if(finish_turf_processing_auxtools(MC_TICK_REMAINING_MS))
+		pause()
+#else
+/datum/controller/subsystem/air/proc/finish_turf_processing(resumed = 0)
+	return
+#endif
+
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/process_deferred_airs(resumed = 0)
+	while(deferred_airs.len)
+		var/list/cur_op = deferred_airs[deferred_airs.len]
+		deferred_airs.len--
+		var/turf/open/T = cur_op[1]
+		if(istype(cur_op[2],/datum/gas_mixture))
+			T.air.merge(cur_op[2])
+		else if(istype(cur_op[2], /datum/callback))
+			var/datum/callback/cb = cur_op[2]
+			cb.Invoke(T)
+		if(MC_TICK_CHECK)
+			return
+#else
+/datum/controller/subsystem/air/proc/process_deferred_airs()
+	return
+#endif
+
 /datum/controller/subsystem/air/proc/process_high_pressure_delta(resumed = FALSE)
 	while (high_pressure_delta.len)
 		var/turf/open/T = high_pressure_delta[high_pressure_delta.len]
@@ -333,6 +431,11 @@ SUBSYSTEM_DEF(air)
 		if(MC_TICK_CHECK)
 			return
 
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/process_active_turfs(resumed = FALSE)
+	if(process_turfs_auxtools(resumed, MC_TICK_REMAINING_MS))
+		pause()
+#else
 /datum/controller/subsystem/air/proc/process_active_turfs(resumed = FALSE)
 	//cache for sanic speed
 	var/fire_count = times_fired
@@ -347,10 +450,12 @@ SUBSYSTEM_DEF(air)
 			T.process_cell(fire_count)
 		if (MC_TICK_CHECK)
 			return
+#endif
 
 #ifdef AUXMOS
 /datum/controller/subsystem/air/proc/process_excited_groups(resumed = FALSE)
-	return
+	if(process_excited_groups_auxtools(resumed, MC_TICK_REMAINING_MS))
+		pause() // TODO What's the pause for?!?!
 #else
 /datum/controller/subsystem/air/proc/process_excited_groups(resumed = FALSE)
 	if (!resumed)
@@ -368,6 +473,15 @@ SUBSYSTEM_DEF(air)
 			EG.dismantle()
 		if (MC_TICK_CHECK)
 			return
+#endif
+
+#ifdef AUXMOS
+/datum/controller/subsystem/air/proc/post_process_turfs(resumed = 0)
+	if(post_process_turfs_auxtools(resumed, MC_TICK_REMAINING_MS))
+		pause()
+#else
+/datum/controller/subsystem/air/proc/post_process_turfs(resumed = 0)
+	return
 #endif
 
 /datum/controller/subsystem/air/proc/process_rebuilds()

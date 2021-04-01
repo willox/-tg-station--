@@ -200,8 +200,7 @@ GLOBAL_VAR_INIT(auxmos_initialized, FALSE)
 	return copy
 
 /datum/gas_mixture/proc/copy_from_turf(turf/model)
-	// TODO: turf/var/temperature has a bad name
-	set_temperature(initial(model.temperature))
+	set_temperature(initial(model.initial_temperature))
 	parse_gas_string(model.initial_gas_mix)
 	return 1
 
