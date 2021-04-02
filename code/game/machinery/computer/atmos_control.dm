@@ -121,7 +121,7 @@
 
 /obj/machinery/air_sensor/Initialize()
 	. = ..()
-	SSair.start_processing_machine(src)
+	SSair.start_processing_machine(src, TRUE)
 	set_frequency(frequency)
 
 /obj/machinery/air_sensor/Destroy()

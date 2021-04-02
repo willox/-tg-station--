@@ -227,7 +227,7 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 /obj/machinery/power/supermatter_crystal/Initialize()
 	. = ..()
 	uid = gl_uid++
-	SSair.start_processing_machine(src)
+	SSair.start_processing_machine(src, TRUE)
 	countdown = new(src)
 	countdown.start()
 	AddElement(/datum/element/point_of_interest)

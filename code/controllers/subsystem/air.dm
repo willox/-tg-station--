@@ -18,6 +18,7 @@ SUBSYSTEM_DEF(air)
 	var/cost_superconductivity = 0
 	var/cost_pipenets = 0
 	var/cost_atmos_machinery = 0
+	var/cost_atmos_turf_machinery = 0
 	var/cost_rebuilds = 0
 
 #ifndef AUXMOS
@@ -31,6 +32,7 @@ SUBSYSTEM_DEF(air)
 	var/list/expansion_queue = list()
 	/// A list of machines that will be processed when currentpart == SSAIR_ATMOSMACHINERY. Use SSair.begin_processing_machine and SSair.stop_processing_machine to add and remove machines.
 	var/list/obj/machinery/atmos_machinery = list()
+	var/list/obj/machinery/atmos_turf_machinery = list()
 	var/list/pipe_init_dirs_cache = list()
 
 	//atmos singletons
@@ -115,6 +117,7 @@ SUBSYSTEM_DEF(air)
 	msg += "SC:[round(cost_superconductivity,1)]|"
 	msg += "PN:[round(cost_pipenets,1)]|"
 	msg += "AM:[round(cost_atmos_machinery,1)]|"
+	msg += "ATM:[round(cost_atmos_turf_machinery,1)]|"
 	msg += "AO:[round(cost_atoms, 1)]|"
 	msg += "RB:[round(cost_rebuilds,1)]|"
 	msg += "} "
@@ -129,6 +132,7 @@ SUBSYSTEM_DEF(air)
 	msg += "SC:[active_super_conductivity.len]|"
 	msg += "PN:[networks.len]|"
 	msg += "AM:[atmos_machinery.len]|"
+	msg += "ATM:[atmos_turf_machinery.len]|"
 	msg += "AO:[atom_process.len]|"
 	msg += "RB:[rebuild_queue.len]|"
 	msg += "EP:[expansion_queue.len]|"
@@ -178,7 +182,6 @@ SUBSYSTEM_DEF(air)
 		cost_pipenets = MC_AVERAGE(cost_pipenets, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
 		currentpart = SSAIR_ATMOSMACHINERY
-
 	if(currentpart == SSAIR_ATMOSMACHINERY)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -189,13 +192,8 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_atmos_machinery = MC_AVERAGE(cost_atmos_machinery, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
-#ifdef AUXMOS
-		currentpart = SSAIR_HOTSPOTS
-#else
-		currentpart = SSAIR_ACTIVETURFS
-#endif
-
 #ifndef AUXMOS
+		currentpart = SSAIR_ACTIVETURFS
 	if(currentpart == SSAIR_ACTIVETURFS)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -206,19 +204,7 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_turfs = MC_AVERAGE(cost_turfs, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
-		currentpart = SSAIR_HOTSPOTS
 #endif
-
-	if(currentpart == SSAIR_HOTSPOTS) //We do this before excited groups to allow breakdowns to be independent of adding turfs while still *mostly preventing mass fires
-		timer = TICK_USAGE_REAL
-		if(!resumed)
-			cached_cost = 0
-		process_hotspots(resumed)
-		cached_cost += TICK_USAGE_REAL - timer
-		if(state != SS_RUNNING)
-			return
-		cost_hotspots = MC_AVERAGE(cost_hotspots, TICK_DELTA_TO_MS(cached_cost))
-		resumed = FALSE
 		currentpart = SSAIR_FINALIZE_TURFS
 	// This literally just waits for the turf processing thread to finish, doesn't do anything else.
 	// this is necessary cause the next step after this interacts with the air--we get consistency
@@ -228,6 +214,25 @@ SUBSYSTEM_DEF(air)
 		if(state != SS_RUNNING)
 			return
 		resumed = 0
+		currentpart = SSAIR_DEFERRED_AIRS
+	if(currentpart == SSAIR_DEFERRED_AIRS)
+		timer = TICK_USAGE_REAL
+		process_deferred_airs(resumed)
+		cost_deferred_airs = MC_AVERAGE(cost_deferred_airs, TICK_DELTA_TO_MS(TICK_USAGE_REAL - timer))
+		if(state != SS_RUNNING)
+			return
+		resumed = 0
+		currentpart = SSAIR_ATMOS_TURF_MACHINERY
+	if(currentpart == SSAIR_ATMOS_TURF_MACHINERY)
+		timer = TICK_USAGE_REAL
+		if(!resumed)
+			cached_cost = 0
+		process_atmos_turf_machinery(resumed)
+		cached_cost += TICK_USAGE_REAL - timer
+		if(state != SS_RUNNING)
+			return
+		cost_atmos_turf_machinery = MC_AVERAGE(cost_atmos_turf_machinery, TICK_DELTA_TO_MS(cached_cost))
+		resumed = FALSE
 		currentpart = SSAIR_HIGHPRESSURE
 	if(currentpart == SSAIR_HIGHPRESSURE)
 		timer = TICK_USAGE_REAL
@@ -239,14 +244,6 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_highpressure = MC_AVERAGE(cost_highpressure, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
-		currentpart = SSAIR_DEFERRED_AIRS
-	if(currentpart == SSAIR_DEFERRED_AIRS)
-		timer = TICK_USAGE_REAL
-		process_deferred_airs(resumed)
-		cost_deferred_airs = MC_AVERAGE(cost_deferred_airs, TICK_DELTA_TO_MS(TICK_USAGE_REAL - timer))
-		if(state != SS_RUNNING)
-			return
-		resumed = 0
 		currentpart = SSAIR_SUPERCONDUCTIVITY
 	if(currentpart == SSAIR_SUPERCONDUCTIVITY)
 		timer = TICK_USAGE_REAL
@@ -259,7 +256,6 @@ SUBSYSTEM_DEF(air)
 		cost_superconductivity = MC_AVERAGE(cost_superconductivity, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
 		currentpart = SSAIR_PROCESS_ATOMS
-
 	if(currentpart == SSAIR_PROCESS_ATOMS)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -270,8 +266,18 @@ SUBSYSTEM_DEF(air)
 			return
 		cost_atoms = MC_AVERAGE(cost_atoms, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
+		currentpart = SSAIR_HOTSPOTS
+	if(currentpart == SSAIR_HOTSPOTS) //We do this before excited groups to allow breakdowns to be independent of adding turfs while still *mostly preventing mass fires
+		timer = TICK_USAGE_REAL
+		if(!resumed)
+			cached_cost = 0
+		process_hotspots(resumed)
+		cached_cost += TICK_USAGE_REAL - timer
+		if(state != SS_RUNNING)
+			return
+		cost_hotspots = MC_AVERAGE(cost_hotspots, TICK_DELTA_TO_MS(cached_cost))
+		resumed = FALSE
 		currentpart = SSAIR_EXCITEDGROUPS
-
 	if(currentpart == SSAIR_EXCITEDGROUPS)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -283,7 +289,6 @@ SUBSYSTEM_DEF(air)
 		cost_groups = MC_AVERAGE(cost_groups, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
 		currentpart = SSAIR_TURF_POST_PROCESS
-
 	// Quick multithreaded "should we display/react?" checks followed by finishing those up before the next step
 	if(currentpart == SSAIR_TURF_POST_PROCESS)
 		timer = TICK_USAGE_REAL
@@ -294,9 +299,6 @@ SUBSYSTEM_DEF(air)
 		resumed = 0
 #ifdef AUXMOS
 		currentpart = SSAIR_ACTIVETURFS
-#endif
-
-#ifdef AUXMOS
 	if(currentpart == SSAIR_ACTIVETURFS)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -359,9 +361,6 @@ SUBSYSTEM_DEF(air)
 		if(MC_TICK_CHECK)
 			return
 
-#ifdef AUXMOS
-	// TODO: eck
-#endif
 /datum/controller/subsystem/air/proc/process_atmos_machinery(resumed = FALSE)
 	if (!resumed)
 		src.currentrun = atmos_machinery.Copy()
@@ -375,6 +374,18 @@ SUBSYSTEM_DEF(air)
 		if(MC_TICK_CHECK)
 			return
 
+/datum/controller/subsystem/air/proc/process_atmos_turf_machinery(resumed = FALSE)
+	if (!resumed)
+		src.currentrun = atmos_turf_machinery.Copy()
+	//cache for sanic speed (lists are references anyways)
+	var/list/currentrun = src.currentrun
+	while(currentrun.len)
+		var/obj/machinery/M = currentrun[currentrun.len]
+		currentrun.len--
+		if(!M || (M.process_atmos() == PROCESS_KILL))
+			atmos_turf_machinery.Remove(M)
+		if(MC_TICK_CHECK)
+			return
 
 /datum/controller/subsystem/air/proc/process_super_conductivity(resumed = FALSE)
 	if (!resumed)
@@ -719,7 +730,7 @@ SUBSYSTEM_DEF(air)
 	return list()
 
 /datum/controller/subsystem/air/proc/setup_atmos_machinery()
-	for (var/obj/machinery/atmospherics/AM in atmos_machinery)
+	for (var/obj/machinery/atmospherics/AM in (atmos_machinery + atmos_turf_machinery))
 		AM.atmosinit()
 		CHECK_TICK
 
@@ -727,7 +738,7 @@ SUBSYSTEM_DEF(air)
 // all atmos machinery has to initalize before the first
 // pipenet can be built.
 /datum/controller/subsystem/air/proc/setup_pipenets()
-	for (var/obj/machinery/atmospherics/AM in atmos_machinery)
+	for (var/obj/machinery/atmospherics/AM in (atmos_machinery + atmos_turf_machinery))
 		var/list/targets = AM.get_rebuild_targets()
 		for(var/datum/pipeline/build_off as anything in targets)
 			build_off.build_pipeline_blocking(AM)
@@ -793,8 +804,11 @@ GLOBAL_LIST_EMPTY(colored_images)
  * Arguments:
  * * machine - The machine to start processing. Can be any /obj/machinery.
  */
-/datum/controller/subsystem/air/proc/start_processing_machine(obj/machinery/machine)
-	atmos_machinery += machine
+/datum/controller/subsystem/air/proc/start_processing_machine(obj/machinery/machine, interacts_with_turf_air=FALSE)
+	if (interacts_with_turf_air)
+		atmos_turf_machinery += machine
+	else
+		atmos_machinery += machine
 
 /**
  * Removes a given machine to the processing system for SSAIR_ATMOSMACHINERY processing.
@@ -807,12 +821,13 @@ GLOBAL_LIST_EMPTY(colored_images)
  * * machine - The machine to stop processing.
  */
 /datum/controller/subsystem/air/proc/stop_processing_machine(obj/machinery/machine)
+	atmos_turf_machinery -= machine
 	atmos_machinery -= machine
 
 	// If we're currently processing atmos machines, there's a chance this machine is in
 	// the currentrun list, which is a cache of atmos_machinery. Remove it from that list
 	// as well to prevent processing qdeleted objects in the cache.
-	if(currentpart == SSAIR_ATMOSMACHINERY)
+	if(currentpart == SSAIR_ATMOSMACHINERY || currentpart == SSAIR_ATMOS_TURF_MACHINERY)
 		currentrun -= machine
 
 /datum/controller/subsystem/air/ui_state(mob/user)

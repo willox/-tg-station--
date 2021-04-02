@@ -20,7 +20,7 @@
 	air_contents = new
 	air_contents.set_volume(volume)
 	air_contents.set_temperature(T20C)
-	SSair.start_processing_machine(src)
+	SSair.start_processing_machine(src, TRUE)
 
 /obj/machinery/portable_atmospherics/Destroy()
 	SSair.stop_processing_machine(src)

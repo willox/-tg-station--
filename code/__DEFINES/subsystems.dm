@@ -250,6 +250,7 @@
 #define SSAIR_DEFERRED_AIRS 9
 #define SSAIR_SUPERCONDUCTIVITY 10
 #define SSAIR_PROCESS_ATOMS 11
+#define SSAIR_ATMOS_TURF_MACHINERY 12
 
 //Pipeline rebuild helper defines, these suck but it'll do for now
 #define SSAIR_REBUILD_PIPELINE 1

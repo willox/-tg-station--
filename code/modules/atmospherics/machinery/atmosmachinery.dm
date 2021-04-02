@@ -59,7 +59,7 @@
 	///Is the thing being rebuilt by SSair or not. Prevents list bloat
 	var/rebuilding = FALSE
 
-	///The bitflag that's being checked on ventcrawling. Default is to allow ventcrawling and seeing pipes. 
+	///The bitflag that's being checked on ventcrawling. Default is to allow ventcrawling and seeing pipes.
 	var/vent_movement = VENTCRAWL_ALLOWED | VENTCRAWL_CAN_SEE
 
 /obj/machinery/atmospherics/examine(mob/user)
@@ -79,7 +79,7 @@
 		armor = list(MELEE = 25, BULLET = 10, LASER = 10, ENERGY = 100, BOMB = 0, BIO = 100, RAD = 100, FIRE = 100, ACID = 70)
 	..()
 	if(process)
-		SSair.start_processing_machine(src)
+		SSair.start_processing_machine(src, TRUE)
 	SetInitDirections()
 
 /obj/machinery/atmospherics/Destroy()

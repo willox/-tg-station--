@@ -19,7 +19,7 @@
 	. = ..()
 	find_circs()
 	connect_to_network()
-	SSair.start_processing_machine(src)
+	SSair.start_processing_machine(src, FALSE)
 	update_appearance()
 
 /obj/machinery/power/generator/ComponentInitialize()
